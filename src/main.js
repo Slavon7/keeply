@@ -11,6 +11,14 @@ const FRONTEND_URL = isDev
   ? 'http://localhost:5173'
   : `file://${path.join(__dirname, '../dist/index.html')}`
 
+const { autoUpdater } = require('electron-updater');
+const log = require('electron-log');
+
+// Логи автообновления
+autoUpdater.logger = log;
+autoUpdater.logger.transports.file.level = 'info';
+autoUpdater.autoDownload = false; // скачивание только после согласия
+
 // ─── Отправка событий в React ──────────────────────────────────────────────
 function send(channel, ...args) {
   if (mainWindow) mainWindow.webContents.send(channel, ...args)
@@ -159,7 +167,6 @@ function buildMenu() {
 // ─── Окно ──────────────────────────────────────────────────────────────────
 async function createWindow() {
   const isMac = process.platform === 'darwin'
-
   mainWindow = new BrowserWindow({
     width: 1100,
     height: 750,
@@ -202,6 +209,9 @@ app.whenReady().then(async () => {
   startPython()
   await waitForBackend()
   await createWindow()
+  if (!isDev) {
+    autoUpdater.checkForUpdatesAndNotify();
+  }
 })
 
 app.on('window-all-closed', () => {
@@ -213,3 +223,29 @@ app.on('window-all-closed', () => {
 app.on('before-quit', () => {
   if (pythonProcess) pythonProcess.kill()
 })
+
+// Отправка событий в renderer
+autoUpdater.on('update-available', (info) => {
+  send('update:available', info); // версию отправляем в UpdateBanner
+});
+
+autoUpdater.on('update-progress', (progress) => {
+  send('update:progress', progress); // прогресс скачивания
+});
+
+autoUpdater.on('update-downloaded', (info) => {
+  send('update:downloaded', info); // готово к перезапуску
+});
+
+autoUpdater.on('error', (err) => {
+  send('update:error', err.message);
+});
+
+// IPC для кнопок
+ipcMain.handle('downloadUpdate', () => {
+  autoUpdater.downloadUpdate();
+});
+
+ipcMain.handle('installUpdate', () => {
+  autoUpdater.quitAndInstall();
+});

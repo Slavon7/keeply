@@ -46,6 +46,25 @@ export const TRANSLATIONS = {
     delete_body: 'будет безвозвратно удалён с устройства.',
     delete_confirm: 'Удалить',
     delete_cancel: 'Оставить',
+    // Updates
+    // Bulk selection
+    select: 'Выбрать',
+    select_cancel: 'Отменить',
+    select_all: 'Выбрать все',
+    selected: 'Выбрано',
+    deselect: 'Снять выбор',
+    delete_bulk_title: 'Удалить файлы?',
+    delete_bulk_body: 'файл(ов) будут безвозвратно удалены с устройства.',
+    
+    update_available: '🎉 Доступно обновление',
+    update_ask: '— скачать сейчас?',
+    update_now: 'Обновить сейчас',
+    update_later: 'Позже',
+    update_downloading: 'Скачивается...',
+    update_ready: '✅ Обновление',
+    update_ready_suffix: 'готово к установке',
+    update_restart: 'Перезапустить сейчас',
+    update_error: '⚠ Ошибка обновления',
     // Preferences
     preferences: 'Настройки',
     general: 'Основные',
@@ -57,6 +76,8 @@ export const TRANSLATIONS = {
     theme_dark: 'Тёмная',
     theme_system: 'Системная',
     language_label: 'Язык интерфейса',
+    max_concurrent_downloads: 'Макс. одновременных загрузок',
+    max_concurrent_downloads_hint: 'Сколько файлов можно скачивать одновременно',
     speed_limit_default: 'Лимит скорости по умолчанию',
     no_limit: 'Без лимита',
     save: 'Сохранить',
@@ -105,6 +126,24 @@ export const TRANSLATIONS = {
     delete_body: 'буде безповоротно видалено з пристрою.',
     delete_confirm: 'Видалити',
     delete_cancel: 'Залишити',
+    // Bulk selection
+    select: 'Вибрати',
+    select_cancel: 'Скасувати',
+    select_all: 'Вибрати все',
+    selected: 'Вибрано',
+    deselect: 'Зняти вибір',
+    delete_bulk_title: 'Видалити файли?',
+    delete_bulk_body: 'файл(ів) будуть безповоротно видалені з пристрою.',
+    
+    update_available: '🎉 Доступне оновлення',
+    update_ask: '— завантажити зараз?',
+    update_now: 'Оновити зараз',
+    update_later: 'Пізніше',
+    update_downloading: 'Завантажується...',
+    update_ready: '✅ Оновлення',
+    update_ready_suffix: 'готове до встановлення',
+    update_restart: 'Перезапустити зараз',
+    update_error: '⚠ Помилка оновлення',
     preferences: 'Налаштування',
     general: 'Загальні',
     language: 'Мова',
@@ -115,6 +154,8 @@ export const TRANSLATIONS = {
     theme_dark: 'Темна',
     theme_system: 'Системна',
     language_label: 'Мова інтерфейсу',
+    max_concurrent_downloads: 'Макс. одночасних завантажень',
+    max_concurrent_downloads_hint: 'Скільки файлів можна завантажувати одночасно',
     speed_limit_default: 'Ліміт швидкості за замовчуванням',
     no_limit: 'Без ліміту',
     save: 'Зберегти',
@@ -163,6 +204,24 @@ export const TRANSLATIONS = {
     delete_body: 'will be permanently deleted from your device.',
     delete_confirm: 'Delete',
     delete_cancel: 'Keep',
+    // Bulk selection
+    select: 'Select',
+    select_cancel: 'Cancel',
+    select_all: 'Select all',
+    selected: 'Selected',
+    deselect: 'Deselect',
+    delete_bulk_title: 'Delete files?',
+    delete_bulk_body: 'file(s) will be permanently deleted from your device.',
+    
+    update_available: '🎉 Update available',
+    update_ask: '— download now?',
+    update_now: 'Update now',
+    update_later: 'Later',
+    update_downloading: 'Downloading...',
+    update_ready: '✅ Update',
+    update_ready_suffix: 'ready to install',
+    update_restart: 'Restart now',
+    update_error: '⚠ Update error',
     preferences: 'Preferences',
     general: 'General',
     language: 'Language',
@@ -173,6 +232,8 @@ export const TRANSLATIONS = {
     theme_dark: 'Dark',
     theme_system: 'System',
     language_label: 'Interface language',
+    max_concurrent_downloads: 'Max concurrent downloads',
+    max_concurrent_downloads_hint: 'How many files can be downloaded at the same time',
     speed_limit_default: 'Default speed limit',
     no_limit: 'No limit',
     save: 'Save',
@@ -188,12 +249,14 @@ export type T = typeof TRANSLATIONS['ru']
 
 // Хранение настроек в localStorage
 export interface AppPreferences {
+  maxConcurrentDownloads: number
   lang: Lang
   theme: 'light' | 'dark' | 'system'
   defaultSpeedLimit: string
 }
 
 const DEFAULT_PREFS: AppPreferences = {
+  maxConcurrentDownloads: 3,
   lang: 'ru',
   theme: 'system',
   defaultSpeedLimit: 'Без лимита',

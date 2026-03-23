@@ -6,20 +6,21 @@ contextBridge.exposeInMainWorld('BACKEND', {
 })
 
 contextBridge.exposeInMainWorld('electronAPI', {
-  // Папка
   browseFolder: () => ipcRenderer.invoke('browse-folder'),
 
-  // Управление окном
-  minimize:    () => ipcRenderer.send('window:minimize'),
-  maximize:    () => ipcRenderer.send('window:maximize'),
-  close:       () => ipcRenderer.send('window:close'),
+  minimize: () => ipcRenderer.send('window:minimize'),
+  maximize: () => ipcRenderer.send('window:maximize'),
+  close: () => ipcRenderer.send('window:close'),
   isMaximized: () => ipcRenderer.invoke('window:is-maximized'),
 
-  // Меню
   onMenu: (channel, callback) => {
     const valid = [
-      'menu:open-preferences', 'menu:clear-history', 'menu:toggle-theme',
-      'menu:paste-and-download', 'menu:stop-all', 'menu:open-downloads-folder',
+      'menu:open-preferences',
+      'menu:clear-history',
+      'menu:toggle-theme',
+      'menu:paste-and-download',
+      'menu:stop-all',
+      'menu:open-downloads-folder',
       'menu:check-updates',
     ]
     if (valid.includes(channel)) {
@@ -29,11 +30,22 @@ contextBridge.exposeInMainWorld('electronAPI', {
   offMenu: (channel) => ipcRenderer.removeAllListeners(channel),
 
   // Обновления
-  checkUpdates: () => ipcRenderer.send('update:check'),
-  installUpdate: () => ipcRenderer.send('update:install'),
+  checkUpdates:   () => ipcRenderer.send('update:check'),
+  downloadUpdate: () => ipcRenderer.send('update:download'), // ← запустить скачивание
+  installUpdate:  () => ipcRenderer.send('update:install'),  // ← перезапустить
+
   onUpdate: (channel, callback) => {
-    const channels = ['update:checking','update:available','update:not-available','update:progress','update:downloaded','update:error']
-    if (channels.includes(channel)) ipcRenderer.on(channel, (_e, data) => callback(data))
+    const channels = [
+      'update:checking',
+      'update:available',
+      'update:not-available',
+      'update:progress',
+      'update:downloaded',
+      'update:error',
+    ]
+    if (channels.includes(channel)) {
+      ipcRenderer.on(channel, (_e, data) => callback(data))
+    }
   },
   offUpdate: (channel) => ipcRenderer.removeAllListeners(channel),
 })

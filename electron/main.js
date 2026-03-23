@@ -1,7 +1,7 @@
 const { app, BrowserWindow, ipcMain, dialog, Menu, shell, clipboard, globalShortcut } = require('electron')
 const path = require('path')
 const { spawn } = require('child_process')
-const { setupAutoUpdater, checkForUpdates, installUpdate } = require('./updater')
+const { setupAutoUpdater, checkForUpdates, downloadUpdate, installUpdate } = require('./updater')
 
 let mainWindow
 let pythonProcess
@@ -142,8 +142,9 @@ ipcMain.handle('browse-folder', async () => {
 })
 
 // IPC — обновления
-ipcMain.on('update:check', () => checkForUpdates())
-ipcMain.on('update:install', () => installUpdate())
+ipcMain.on('update:check',    () => checkForUpdates())
+ipcMain.on('update:download', () => downloadUpdate())
+ipcMain.on('update:install',  () => installUpdate())
 
 // ─── Старт ─────────────────────────────────────────────────────────────────
 app.whenReady().then(async () => {

@@ -8,10 +8,11 @@ interface SearchBarProps {
   query: string; onQuery: (q: string) => void
   sort: SortKey; onSort: (s: SortKey) => void
   total: number; searchOpen: boolean; onToggleSearch: () => void
+  isSelectionMode?: boolean; onToggleSelection?: () => void
   t: T
 }
 
-export function SearchBar({ query, onQuery, sort, onSort, total, searchOpen, onToggleSearch, t }: SearchBarProps) {
+export function SearchBar({ query, onQuery, sort, onSort, total, searchOpen, onToggleSearch, isSelectionMode = false, onToggleSelection, t }: SearchBarProps) {
   const inputRef = useRef<HTMLInputElement>(null)
   const [sortOpen, setSortOpen] = useState(false)
   const popupRef = useRef<HTMLDivElement>(null)
@@ -46,6 +47,17 @@ export function SearchBar({ query, onQuery, sort, onSort, total, searchOpen, onT
       <div className="flex-1" />
 
       <div className="flex items-center gap-2">
+        {/* Кнопка выбора */}
+        {total > 0 && onToggleSelection && (
+          <button onClick={onToggleSelection}
+            className={`h-8 rounded-lg border px-3 text-xs font-medium transition-all ${
+              isSelectionMode
+                ? 'border-green-500 bg-green-50 text-green-600 dark:bg-green-900/30 dark:text-green-400'
+                : 'border-gray-300 text-gray-500 hover:border-gray-400 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-400 dark:hover:bg-gray-800'
+            }`}>
+            {isSelectionMode ? t.select_cancel : t.select}
+          </button>
+        )}
         {/* Инпут поиска */}
         <div className={`overflow-hidden transition-all duration-200 ${searchOpen ? 'w-56 opacity-100' : 'w-0 opacity-0'}`}>
           <div className="relative">

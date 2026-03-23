@@ -165,7 +165,7 @@ export function PreferencesModal({ prefs, t, onSave, onClose }: Props) {
                     ⬇️
                   </div>
                   <div>
-                    <h3 className="text-lg font-bold text-gray-900">Keeply</h3>
+                    <h3 className="text-lg font-bold text-gray-900">YT Downloader</h3>
                     <p className="text-sm text-gray-400">{t.version} 1.0.0</p>
                   </div>
                 </div>

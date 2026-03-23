@@ -10,6 +10,7 @@ import type { DownloadItem as Item, DownloadSettings } from './api'
 import { loadPrefs, savePrefs, applyTheme, t as getT, AppPreferences } from './i18n'
 import { TitleBar } from './components/TitleBar'
 import { UpdateBanner } from './components/UpdateBanner'
+import { BulkActionsBar } from './components/BulkActionsBar'
 
 type FilterType = 'all' | 'video' | 'audio'
 type SortKey = 'date_desc' | 'date_asc' | 'name_asc' | 'name_desc' | 'size_desc' | 'size_asc'
@@ -30,6 +31,9 @@ export default function App() {
   const [showPrefs, setShowPrefs]       = useState(false)
   const [deleteTarget, setDeleteTarget] = useState<{ id: string; title: string; filepath: string } | null>(null)
   const [prefs, setPrefs]               = useState<AppPreferences>(loadPrefs)
+
+  const [isSelectionMode, setIsSelectionMode] = useState(false)
+  const [selectedIds, setSelectedIds]         = useState<Set<string>>(new Set())
 
   const activeDownloads = useRef<Map<string, ActiveDownload>>(new Map())
 
@@ -200,7 +204,55 @@ export default function App() {
   const isAnyDownloading = items.some(i => i.status === 'downloading')
 
   // ─── Скачивание ────────────────────────────────────────────────────────────
+  const handleToggleSelection = useCallback(() => {
+    setIsSelectionMode(v => {
+      if (v) setSelectedIds(new Set())
+      return !v
+    })
+  }, [])
+
+  const handleToggleSelect = useCallback((id: string) => {
+    setSelectedIds(prev => {
+      const next = new Set(prev)
+      next.has(id) ? next.delete(id) : next.add(id)
+      return next
+    })
+  }, [])
+
+  const handleSelectAll = useCallback(() => {
+    setSelectedIds(prev =>
+      prev.size === filtered.length
+        ? new Set()
+        : new Set(filtered.map(i => i.id))
+    )
+  }, [filtered])
+
+  const handleDeleteSelected = useCallback(() => {
+    const count = selectedIds.size
+    const titles = items.filter(i => selectedIds.has(i.id)).map(i => i.title)
+    setDeleteTarget({ id: '__bulk__', title: `${count}`, filepath: JSON.stringify(
+      items.filter(i => selectedIds.has(i.id)).map(i => i.filepath)
+    )})
+  }, [selectedIds, items])
+
+  const handleOpenFolderSelected = useCallback(() => {
+    const item = items.find(i => selectedIds.has(i.id))
+    if (item?.filepath) {
+      fetch('http://127.0.0.1:7842/open-folder', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ filepath: item.filepath }),
+      })
+    }
+  }, [selectedIds, items])
+
   const handleDownload = useCallback((settings: DownloadSettings) => {
+    // Проверяем лимит одновременных загрузок
+    const activeCount = items.filter(i => i.status === 'downloading').length
+    if (activeCount >= (prefs.maxConcurrentDownloads ?? 3)) {
+      alert(`Максимум ${prefs.maxConcurrentDownloads ?? 3} загрузок одновременно`)
+      return
+    }
     const tempId = `downloading-${Date.now()}`
     const placeholder: Item = {
       id: tempId, title: T.connecting, filepath: '', url: settings.url,
@@ -267,10 +319,18 @@ export default function App() {
 
   const handleDeleteConfirm = useCallback(async () => {
     if (!deleteTarget) return
-    await deleteFile(deleteTarget.filepath)
-    setItems(prev => prev.filter(i => i.id !== deleteTarget.id))
+    if (deleteTarget.id === '__bulk__') {
+      const filepaths: string[] = JSON.parse(deleteTarget.filepath)
+      await Promise.all(filepaths.map(fp => deleteFile(fp)))
+      setItems(prev => prev.filter(i => !selectedIds.has(i.id)))
+      setSelectedIds(new Set())
+      setIsSelectionMode(false)
+    } else {
+      await deleteFile(deleteTarget.filepath)
+      setItems(prev => prev.filter(i => i.id !== deleteTarget.id))
+    }
     setDeleteTarget(null)
-  }, [deleteTarget])
+  }, [deleteTarget, selectedIds])
 
   const handleSavePrefs = useCallback((newPrefs: AppPreferences) => {
     savePrefs(newPrefs)
@@ -290,9 +350,23 @@ export default function App() {
         total={counts.all}
         searchOpen={searchOpen}
         onToggleSearch={() => setSearchOpen(v => !v)}
+        isSelectionMode={isSelectionMode}
+        onToggleSelection={handleToggleSelection}
         t={T}
       />
       <FilterTabs active={activeFilter} onChange={setActiveFilter} counts={counts} t={T} />
+
+      {isSelectionMode && (
+        <BulkActionsBar
+          selectedCount={selectedIds.size}
+          totalCount={filtered.length}
+          onSelectAll={handleSelectAll}
+          onClearSelection={() => setSelectedIds(new Set())}
+          onDeleteSelected={handleDeleteSelected}
+          onOpenFolder={handleOpenFolderSelected}
+          t={T}
+        />
+      )}
 
       <div className="flex-1 overflow-y-auto dark:bg-gray-950">
         {filtered.length === 0 ? (
@@ -302,14 +376,22 @@ export default function App() {
         ) : (
           filtered.map(item => (
             <DownloadItem key={item.id} item={item}
-              onDelete={handleDeleteRequest} onStop={handleStop} onPause={handlePause} t={T} />
+              onDelete={handleDeleteRequest} onStop={handleStop} onPause={handlePause}
+              isSelectionMode={isSelectionMode}
+              isSelected={selectedIds.has(item.id)}
+              onToggleSelect={handleToggleSelect}
+              t={T} />
           ))
         )}
       </div>
 
       {deleteTarget && (
-        <DeleteConfirmModal title={deleteTarget.title} t={T}
-          onConfirm={handleDeleteConfirm} onCancel={() => setDeleteTarget(null)} />
+        <DeleteConfirmModal
+          title={deleteTarget.title}
+          isBulk={deleteTarget.id === '__bulk__'}
+          t={T}
+          onConfirm={handleDeleteConfirm}
+          onCancel={() => setDeleteTarget(null)} />
       )}
 
       {showPrefs && (

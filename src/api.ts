@@ -12,6 +12,7 @@ export interface DownloadItem {
   fileSize?: string
   format?: string
   resolution?: string
+  fps?: string
   duration?: string
   status: 'downloaded' | 'downloading' | 'failed'
   progress?: number

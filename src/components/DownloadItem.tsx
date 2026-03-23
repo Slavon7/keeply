@@ -7,6 +7,9 @@ interface Props {
   onDelete?: (id: string) => void
   onStop?:   (id: string) => void
   onPause?:  (id: string) => void
+  isSelectionMode?: boolean
+  isSelected?: boolean
+  onToggleSelect?: (id: string) => void
   t: T
 }
 
@@ -23,7 +26,7 @@ function formatSpeed(bps: number): string {
   return `${(bps / 1024 / 1024).toFixed(1)} MB/s`
 }
 
-export function DownloadItem({ item, onDelete, onStop, onPause, t }: Props) {
+export function DownloadItem({ item, onDelete, onStop, onPause, isSelectionMode = false, isSelected = false, onToggleSelect, t }: Props) {
   const isDownloading = item.status === 'downloading'
   const isPaused      = item.paused ?? false
   const isProcessing  = item.processing ?? false
@@ -33,7 +36,30 @@ export function DownloadItem({ item, onDelete, onStop, onPause, t }: Props) {
   const speedStr      = formatSpeed(item.speed ?? 0)
 
   return (
-    <div className="group flex items-center gap-4 border-b border-gray-100 bg-white px-6 py-3 transition-colors hover:bg-gray-50 dark:border-gray-800 dark:bg-gray-900 dark:hover:bg-gray-800">
+    <div
+      onClick={() => isSelectionMode && item.id && onToggleSelect?.(item.id)}
+      className={`group flex items-center gap-4 border-b border-gray-100 px-6 py-3 transition-colors dark:border-gray-800 ${
+        isSelectionMode
+          ? isSelected
+            ? 'bg-green-50 dark:bg-green-950/30 cursor-pointer'
+            : 'bg-white dark:bg-gray-900 cursor-pointer hover:bg-green-50/50 dark:hover:bg-green-950/10'
+          : 'bg-white dark:bg-gray-900 hover:bg-gray-50 dark:hover:bg-gray-800'
+      }`}>
+
+      {/* Чекбокс в режиме выбора */}
+      {isSelectionMode && (
+        <div className="flex-shrink-0">
+          <div className={`flex h-5 w-5 items-center justify-center rounded border-2 transition-all ${
+            isSelected ? 'border-green-600 bg-green-600' : 'border-gray-300 bg-white dark:border-gray-600 dark:bg-gray-800'
+          }`}>
+            {isSelected && (
+              <svg className="h-3 w-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+              </svg>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Thumbnail */}
       <div className="relative h-16 w-28 flex-shrink-0 overflow-hidden rounded-lg bg-gray-100 dark:bg-gray-800">
@@ -59,7 +85,7 @@ export function DownloadItem({ item, onDelete, onStop, onPause, t }: Props) {
         <div className="mt-0.5 flex items-center gap-2 text-xs text-gray-400 dark:text-gray-500">
           {item.fileSize   && <span>{item.fileSize}</span>}
           {item.format     && <><span>•</span><span>{item.format.toUpperCase()}</span></>}
-          {item.resolution && <><span>•</span><span>{item.resolution}</span></>}
+          {item.resolution && <><span>•</span><span>{item.resolution}{item.fps ? ` · ${item.fps}fps` : ''}</span></>}
           {item.downloaded_at && !isDownloading && <><span>•</span><span>{item.downloaded_at}</span></>}
         </div>
 
