@@ -93,6 +93,35 @@ export async function openFolder(filepath: string): Promise<void> {
   })
 }
 
+export interface PlaylistTrack {
+  url: string
+  title: string
+  duration?: string
+  thumbnail?: string
+  index: number
+}
+
+export interface PlaylistInfo {
+  ok: boolean
+  is_playlist: boolean
+  title?: string
+  entries: PlaylistTrack[]
+}
+
+export async function fetchPlaylistInfo(url: string): Promise<PlaylistInfo> {
+  try {
+    const res = await fetch(`${BASE}/playlist-info`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ url }),
+    })
+    if (!res.ok) return { ok: false, is_playlist: false, entries: [] }
+    return res.json()
+  } catch {
+    return { ok: false, is_playlist: false, entries: [] }
+  }
+}
+
 export function startDownload(
   settings: DownloadSettings,
   onProgress: (percent: number, speed: number, downloaded: number, total: number) => void,

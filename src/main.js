@@ -207,23 +207,36 @@ ipcMain.handle('browse-folder', async () => {
 // ─── Старт ─────────────────────────────────────────────────────────────────
 app.whenReady().then(async () => {
   startPython()
-  await waitForBackend()
-  await createWindow()
+  createWindow()
+  waitForBackend()
   if (!isDev) {
     autoUpdater.checkForUpdatesAndNotify();
   }
 })
 
+// стало
+function killPython() {
+  if (!pythonProcess) return
+  try {
+    // На Windows убиваем дерево процессов
+    if (process.platform === 'win32') {
+      require('child_process').execSync(`taskkill /pid ${pythonProcess.pid} /T /F`, { windowsHide: true })
+    } else {
+      pythonProcess.kill('SIGTERM')
+    }
+  } catch (_) {}
+  pythonProcess = null
+}
+
 app.on('window-all-closed', () => {
-  if (pythonProcess) pythonProcess.kill()
+  killPython()
   globalShortcut.unregisterAll()
   if (process.platform !== 'darwin') app.quit()
 })
 
 app.on('before-quit', () => {
-  if (pythonProcess) pythonProcess.kill()
+  killPython()
 })
-
 // Отправка событий в renderer
 autoUpdater.on('update-available', (info) => {
   send('update:available', info); // версию отправляем в UpdateBanner

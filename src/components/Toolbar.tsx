@@ -1,7 +1,8 @@
 import { useState, useEffect, useRef } from 'react'
-import { Download, Settings, ChevronDown, Check } from 'lucide-react'
-import { DownloadSettings } from '../api'
+import { Download, Settings, ChevronDown, Check, Loader2 } from 'lucide-react'
+import { DownloadSettings, fetchPlaylistInfo, PlaylistTrack } from '../api'
 import { FolderPicker } from './FolderPicker'
+import { PlaylistModal } from './PlaylistModal'
 import { T } from '../i18n'
 
 interface ToolbarProps {
@@ -92,14 +93,17 @@ export function Toolbar({ onDownload, isDownloading, t }: ToolbarProps) {
   const [subtitles, setSubtitles]       = useState(false)
   const [playlist, setPlaylist]         = useState(false)
   const [downloadDir, setDownloadDir]   = useState('')
+  const [playlistTracks, setPlaylistTracks] = useState<PlaylistTrack[]>([])
+  const [playlistTitle, setPlaylistTitle]   = useState('')
+  const [playlistUrl, setPlaylistUrl]       = useState('')
+  const [showPlaylist, setShowPlaylist]     = useState(false)
+  const [loadingPlaylist, setLoadingPlaylist] = useState(false)
 
-  // Синхронизируем формат с платформой
   useEffect(() => {
     const p = PLATFORM_SETTINGS[platform]
     setFormat(p.format.toUpperCase())
   }, [platform])
 
-  // Вставка URL
   useEffect(() => {
     const pasteHandler = (e: Event) => setUrl((e as CustomEvent<string>).detail)
     const downloadHandler = () => handleDownload()
@@ -111,22 +115,51 @@ export function Toolbar({ onDownload, isDownloading, t }: ToolbarProps) {
     }
   }, [url, quality, format, platform, sponsorblock, subtitles, playlist, downloadDir])
 
-  const handleDownload = () => {
-    if (!url.trim()) return
+  const buildSettings = (trackUrl: string): DownloadSettings => {
     const p = PLATFORM_SETTINGS[platform]
-    const qualityVal = p.qualityLimit ?? quality.toLowerCase()
-    const formatVal  = format.toLowerCase()
-    onDownload({
-      url: url.trim(),
-      format:      formatVal,
-      quality:     qualityVal,
-      audio_codec: p.audioCodec,
+    return {
+      url:          trackUrl,
+      format:       format.toLowerCase(),
+      quality:      p.qualityLimit ?? quality.toLowerCase(),
+      audio_codec:  p.audioCodec,
       platform,
       sponsorblock,
       subtitles,
-      playlist,
+      playlist:     false,
       download_dir: downloadDir || undefined,
-    })
+    }
+  }
+
+  const handleDownload = async () => {
+    if (!url.trim()) return
+    const trimmed = url.trim()
+
+    const isPlaylistUrl = trimmed.includes('list=') || trimmed.includes('/playlist') ||
+      trimmed.includes('/sets/') || trimmed.includes('album')
+
+    if (isPlaylistUrl && !playlist) {
+      setLoadingPlaylist(true)
+      try {
+        const info = await fetchPlaylistInfo(trimmed)
+        if (info.ok && info.is_playlist && info.entries.length > 1) {
+          setPlaylistTracks(info.entries)
+          setPlaylistTitle(info.title ?? 'Плейлист')
+          setPlaylistUrl(trimmed)
+          setShowPlaylist(true)
+          setLoadingPlaylist(false)
+          return
+        }
+      } catch (_) {}
+      setLoadingPlaylist(false)
+    }
+
+    onDownload(buildSettings(trimmed))
+    setUrl('')
+  }
+
+  const handlePlaylistDownload = (selectedUrls: string[]) => {
+    setShowPlaylist(false)
+    selectedUrls.forEach(trackUrl => onDownload(buildSettings(trackUrl)))
     setUrl('')
   }
 
@@ -134,89 +167,86 @@ export function Toolbar({ onDownload, isDownloading, t }: ToolbarProps) {
   const displayQuality = qualityLocked ? PLATFORM_SETTINGS[platform].qualityLimit!.toUpperCase() : quality
 
   return (
-    <div className="border-b border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-900">
-      <div className="flex items-center gap-2 px-6 py-3">
+    <>
+      <div className="border-b border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-900">
+        <div className="flex items-center gap-2 px-6 py-3">
+          <input
+            type="text"
+            value={url}
+            onChange={e => setUrl(e.target.value)}
+            onKeyDown={e => e.key === 'Enter' && handleDownload()}
+            placeholder={t.paste_placeholder}
+            className="flex-1 rounded-lg border border-gray-300 px-4 py-2.5 text-sm outline-none transition-all focus:border-green-500 focus:ring-2 focus:ring-green-500/20 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200 dark:placeholder-gray-500"
+          />
 
-        {/* URL инпут */}
-        <input
-          type="text"
-          value={url}
-          onChange={e => setUrl(e.target.value)}
-          onKeyDown={e => e.key === 'Enter' && handleDownload()}
-          placeholder={t.paste_placeholder}
-          className="flex-1 rounded-lg border border-gray-300 px-4 py-2.5 text-sm outline-none transition-all focus:border-green-500 focus:ring-2 focus:ring-green-500/20 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200 dark:placeholder-gray-500"
-        />
+          <button
+            onClick={handleDownload}
+            disabled={!url.trim() || loadingPlaylist}
+            className="flex flex-shrink-0 items-center gap-2 rounded-lg bg-green-600 px-5 py-2.5 text-sm font-medium text-white shadow-sm transition-all hover:bg-green-700 hover:shadow-md active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {loadingPlaylist
+              ? <Loader2 className="h-4 w-4 animate-spin" />
+              : <Download className="h-4 w-4" />
+            }
+            {loadingPlaylist ? (t as any).playlist_loading ?? 'Загрузка...' : t.download}
+          </button>
 
-        {/* Download */}
-        <button
-          onClick={handleDownload}
-          disabled={!url.trim()}
-          className="flex flex-shrink-0 items-center gap-2 rounded-lg bg-green-600 px-5 py-2.5 text-sm font-medium text-white shadow-sm transition-all hover:bg-green-700 hover:shadow-md active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
-        >
-          <Download className="h-4 w-4" />
-          {t.download}
-        </button>
+          <Dropdown value={format} options={FORMAT_OPTIONS} onChange={setFormat} />
+          <Dropdown value={displayQuality} options={QUALITY_OPTIONS} onChange={setQuality} disabled={qualityLocked} />
+          <Dropdown
+            value={PLATFORM_SETTINGS[platform].label}
+            options={Object.values(PLATFORM_SETTINGS).map(p => p.label)}
+            onChange={label => {
+              const key = Object.entries(PLATFORM_SETTINGS).find(([, v]) => v.label === label)?.[0] as Platform
+              if (key) setPlatform(key)
+            }}
+          />
 
-        {/* Формат */}
-        <Dropdown
-          value={format}
-          options={FORMAT_OPTIONS}
-          onChange={setFormat}
-        />
+          <button
+            onClick={() => setShowSettings(v => !v)}
+            className={`flex-shrink-0 rounded-lg p-2.5 transition-all active:scale-95 ${
+              showSettings
+                ? 'bg-gray-100 text-gray-900 dark:bg-gray-700 dark:text-gray-100'
+                : 'text-gray-500 hover:bg-gray-100 hover:text-gray-700 dark:text-gray-400 dark:hover:bg-gray-800'
+            }`}
+          >
+            <Settings className="h-5 w-5" />
+          </button>
+        </div>
 
-        {/* Качество */}
-        <Dropdown
-          value={displayQuality}
-          options={QUALITY_OPTIONS}
-          onChange={setQuality}
-          disabled={qualityLocked}
-        />
-
-        {/* Платформа */}
-        <Dropdown
-          value={PLATFORM_SETTINGS[platform].label}
-          options={Object.values(PLATFORM_SETTINGS).map(p => p.label)}
-          onChange={label => {
-            const key = Object.entries(PLATFORM_SETTINGS).find(([, v]) => v.label === label)?.[0] as Platform
-            if (key) setPlatform(key)
-          }}
-        />
-
-        {/* Настройки */}
-        <button
-          onClick={() => setShowSettings(v => !v)}
-          className={`flex-shrink-0 rounded-lg p-2.5 transition-all active:scale-95 ${
-            showSettings
-              ? 'bg-gray-100 text-gray-900 dark:bg-gray-700 dark:text-gray-100'
-              : 'text-gray-500 hover:bg-gray-100 hover:text-gray-700 dark:text-gray-400 dark:hover:bg-gray-800'
-          }`}
-        >
-          <Settings className="h-5 w-5" />
-        </button>
+        {showSettings && (
+          <div className="flex flex-wrap items-center gap-4 border-t border-gray-100 px-6 py-3 text-sm text-gray-600 dark:border-gray-800 dark:text-gray-400">
+            <div className="flex items-center gap-2">
+              <span className="text-gray-500 dark:text-gray-400">{t.save_to}</span>
+              <FolderPicker value={downloadDir} onChange={setDownloadDir} />
+            </div>
+            <div className="h-4 w-px bg-gray-200 dark:bg-gray-700" />
+            <label className="flex items-center gap-2 cursor-pointer select-none">
+              <input type="checkbox" checked={sponsorblock} onChange={e => setSponsorblock(e.target.checked)} className="accent-green-600" />
+              {t.sponsorblock}
+            </label>
+            <label className="flex items-center gap-2 cursor-pointer select-none">
+              <input type="checkbox" checked={subtitles} onChange={e => setSubtitles(e.target.checked)} className="accent-green-600" />
+              {t.subtitles}
+            </label>
+            <label className="flex items-center gap-2 cursor-pointer select-none">
+              <input type="checkbox" checked={playlist} onChange={e => setPlaylist(e.target.checked)} className="accent-green-600" />
+              {t.full_playlist}
+            </label>
+          </div>
+        )}
       </div>
 
-      {/* Расширенные настройки */}
-      {showSettings && (
-        <div className="flex flex-wrap items-center gap-4 border-t border-gray-100 px-6 py-3 text-sm text-gray-600 dark:border-gray-800 dark:text-gray-400">
-          <div className="flex items-center gap-2">
-            <span className="text-gray-500 dark:text-gray-400">{t.save_to}</span>
-            <FolderPicker value={downloadDir} onChange={setDownloadDir} />
-          </div>
-          <div className="h-4 w-px bg-gray-200 dark:bg-gray-700" />
-          <label className="flex items-center gap-2 cursor-pointer select-none">
-            <input type="checkbox" checked={sponsorblock} onChange={e => setSponsorblock(e.target.checked)} className="accent-green-600" />
-            {t.sponsorblock}
-          </label>
-          <label className="flex items-center gap-2 cursor-pointer select-none">
-            <input type="checkbox" checked={subtitles} onChange={e => setSubtitles(e.target.checked)} className="accent-green-600" />
-            {t.subtitles}
-          </label>
-          <label className="flex items-center gap-2 cursor-pointer select-none">
-            <input type="checkbox" checked={playlist} onChange={e => setPlaylist(e.target.checked)} className="accent-green-600" />
-            {t.full_playlist}
-          </label>
-        </div>
+      {showPlaylist && (
+        <PlaylistModal
+          url={playlistUrl}
+          tracks={playlistTracks}
+          playlistTitle={playlistTitle}
+          onDownload={handlePlaylistDownload}
+          onCancel={() => setShowPlaylist(false)}
+          t={t}
+        />
       )}
-    </div>
+    </>
   )
 }

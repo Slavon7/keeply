@@ -1,7 +1,7 @@
 {
   "name": "Keeply",
-  "version": "1.0.1",
-  "description": "Keeply - Your personal media archiver",
+  "version": "1.0.5",
+  "description": "Keeply - Your personal media downloader",
   "author": {
     "name": "Viacheslav Omeniuk",
     "email": "lavalolch@gmail.com"
@@ -19,7 +19,7 @@
   "build": {
     "appId": "com.keeply.app",
     "productName": "Keeply",
-    "copyright": "Copyright © 2026 DinosaurDesign",
+    "copyright": "Copyright © 2026 DinosaurStudio",
     "icon": "assets/icon.ico",
     "publish": {
       "provider": "github",

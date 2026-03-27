@@ -123,6 +123,109 @@ def api_delete_file(req: OpenRequest):
     return {"ok": True}
 
 
+# ─── Получение информации о плейлисте ─────────────────────────────────────────
+
+class PlaylistInfoRequest(BaseModel):
+    url: str
+
+@app.post("/playlist-info")
+async def get_playlist_info(req: PlaylistInfoRequest):
+    """Возвращает список треков плейлиста без скачивания."""
+    import yt_dlp
+    try:
+        opts = {
+            "quiet": True,
+            "no_warnings": True,
+            "extract_flat": True,  # только метаданные, без скачивания
+            "noplaylist": False,
+        }
+        with yt_dlp.YoutubeDL(opts) as ydl:
+            info = ydl.extract_info(req.url, download=False)
+            if not info:
+                return {"ok": False, "error": "Не удалось получить информацию"}
+
+            entries = info.get("entries", [])
+            if not entries:
+                # Это не плейлист — одно видео
+                return {"ok": True, "is_playlist": False, "entries": []}
+
+            tracks = []
+            for entry in entries:
+                if not entry:
+                    continue
+                tracks.append({
+                    "id":        entry.get("id", ""),
+                    "url":       entry.get("url") or entry.get("webpage_url") or f"https://www.youtube.com/watch?v={entry.get('id', '')}",
+                    "title":     entry.get("title", "Без названия"),
+                    "duration":  entry.get("duration"),
+                    "thumbnail": entry.get("thumbnail"),
+                })
+
+            return {
+                "ok": True,
+                "is_playlist": True,
+                "title": info.get("title", "Плейлист"),
+                "entries": tracks,
+            }
+    except Exception as e:
+        return {"ok": False, "error": str(e)}
+
+
+# ─── Плейлист инфо ────────────────────────────────────────────────────────────
+
+class PlaylistRequest(BaseModel):
+    url: str
+
+@app.post("/playlist-info")
+def get_playlist_info(req: PlaylistRequest):
+    import yt_dlp
+    try:
+        opts = {
+            "quiet": True,
+            "no_warnings": True,
+            "extract_flat": True,  # не скачиваем, только мета
+            "skip_download": True,
+        }
+        with yt_dlp.YoutubeDL(opts) as ydl:
+            info = ydl.extract_info(req.url, download=False)
+
+        if not info:
+            return {"ok": False, "is_playlist": False, "entries": []}
+
+        entries_raw = info.get("entries", [])
+        if not entries_raw:
+            return {"ok": True, "is_playlist": False, "entries": []}
+
+        entries = []
+        for i, entry in enumerate(entries_raw):
+            if not entry:
+                continue
+            # Длительность
+            dur = entry.get("duration")
+            dur_str = None
+            if dur:
+                mins, secs = divmod(int(dur), 60)
+                hrs, mins = divmod(mins, 60)
+                dur_str = f"{hrs}:{mins:02d}:{secs:02d}" if hrs else f"{mins}:{secs:02d}"
+
+            entries.append({
+                "index":     i + 1,
+                "url":       entry.get("url") or entry.get("webpage_url") or req.url,
+                "title":     entry.get("title", f"Трек {i+1}"),
+                "duration":  dur_str,
+                "thumbnail": entry.get("thumbnail"),
+            })
+
+        return {
+            "ok":          True,
+            "is_playlist": len(entries) > 1,
+            "title":       info.get("title") or info.get("playlist_title", "Плейлист"),
+            "entries":     entries,
+        }
+    except Exception as e:
+        return {"ok": False, "is_playlist": False, "entries": [], "error": str(e)}
+
+
 # ─── WebSocket для скачивания ──────────────────────────────────────────────────
 
 @app.websocket("/ws/download")

@@ -87,6 +87,13 @@ class Downloader:
                     if is_audio and abr:
                         resolution = f"{int(abr)}kbps"
 
+                    # ─── FPS ──────────────────────────────────────────────────
+                    fps = None
+                    if not is_audio:
+                        raw_fps = info.get("fps")
+                        if raw_fps:
+                            fps = str(int(round(raw_fps)))
+
                     on_complete({
                         "title":      info.get("title", "Без названия"),
                         "filepath":   filename,
@@ -97,6 +104,7 @@ class Downloader:
                         "fileSize":   file_size,
                         "format":     fmt.upper(),
                         "resolution": resolution,
+                        "fps":        fps,
                     })
 
         except Exception as e:
@@ -122,7 +130,7 @@ class Downloader:
             "quiet":          True,
             "no_warnings":    True,
             "outtmpl":        str(Path(dl_dir) / "%(title)s.%(ext)s"),
-            "progress_hooks": [self._make_hook(on_progress, s.get("on_processing"), s.get("cancelled"))],
+            "progress_hooks": [self._make_hook(on_progress, s.get("on_processing"), s.get("cancelled"), s.get("paused"))],
             "noplaylist":     not s.get("playlist", False),
         }
 
@@ -163,12 +171,20 @@ class Downloader:
 
         return opts
 
-    def _make_hook(self, on_progress, on_processing=None, cancelled=None):
+    def _make_hook(self, on_progress, on_processing=None, cancelled=None, paused=None):
+        import time
         last_total = [0]
         def hook(d):
             # Если отмена — бросаем исключение чтобы остановить yt-dlp
             if cancelled and cancelled[0]:
                 raise Exception("Download cancelled by user")
+
+            # Пауза — блокируем поток пока не снимут паузу
+            if paused:
+                while paused[0]:
+                    if cancelled and cancelled[0]:
+                        raise Exception("Download cancelled by user")
+                    time.sleep(0.2)
 
             if d["status"] == "downloading" and on_progress:
                 total      = d.get("total_bytes") or d.get("total_bytes_estimate", 0)

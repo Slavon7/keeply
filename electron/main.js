@@ -1,6 +1,6 @@
 const { app, BrowserWindow, ipcMain, dialog, Menu, shell, clipboard, globalShortcut } = require('electron')
 const path = require('path')
-const { spawn } = require('child_process')
+const { spawn, execSync } = require('child_process')
 const { setupAutoUpdater, checkForUpdates, downloadUpdate, installUpdate } = require('./updater')
 
 let mainWindow
@@ -25,7 +25,7 @@ function startPython() {
     : path.join(__dirname, '../backend/server.py')
 
   pythonProcess = isExe
-    ? spawn(serverPath, [], { windowsHide: true, stdio: 'ignore' })
+    ? spawn(serverPath, [], { windowsHide: true, stdio: 'ignore', detached: false })
     : spawn('python', [serverPath], { stdio: 'pipe', windowsHide: true })
 
   if (isDev) {
@@ -35,13 +35,25 @@ function startPython() {
   pythonProcess.on('close', code => { if (isDev) console.log('[Python] exited', code) })
 }
 
-async function waitForBackend(retries = 20) {
+function killPython() {
+  if (!pythonProcess) return
+  try {
+    if (process.platform === 'win32') {
+      execSync(`taskkill /pid ${pythonProcess.pid} /T /F`, { windowsHide: true })
+    } else {
+      pythonProcess.kill('SIGTERM')
+    }
+  } catch (_) {}
+  pythonProcess = null
+}
+
+async function waitForBackend(retries = 30) {
   for (let i = 0; i < retries; i++) {
     try {
       const res = await fetch(`${BACKEND_URL}/history`)
       if (res.ok) return true
     } catch (_) {}
-    await new Promise(r => setTimeout(r, 300))
+    await new Promise(r => setTimeout(r, 150))
   }
   return false
 }
@@ -95,7 +107,7 @@ function buildMenu() {
         { label: 'Check for Updates', click: () => send('menu:check-updates') },
         { label: 'Report a Bug',      click: () => shell.openExternal('https://github.com/') },
         { type: 'separator' },
-        { label: 'About YT Downloader', click: () => send('menu:open-preferences', 'about') },
+        { label: 'About Keeply', click: () => send('menu:open-preferences', 'about') },
       ],
     },
   ]
@@ -112,6 +124,7 @@ async function createWindow() {
     frame: false,
     transparent: false,
     backgroundColor: '#ffffff',
+    show: false,
     icon: path.join(__dirname, '../assets/icon.ico'),
     webPreferences: {
       nodeIntegration: false,
@@ -121,12 +134,16 @@ async function createWindow() {
   })
 
   mainWindow.loadURL(FRONTEND_URL)
-  Menu.setApplicationMenu(null) // меню кастомное в React
+  Menu.setApplicationMenu(null)
+
+  // Показываем окно как только React отрендерился
+  mainWindow.once('ready-to-show', () => {
+    mainWindow.show()
+  })
 
   // Запускаем auto-updater только в prod
   if (!isDev) {
     setupAutoUpdater(mainWindow)
-    // Проверяем обновления через 5 сек после старта
     setTimeout(() => checkForUpdates(), 5000)
   }
 }
@@ -149,16 +166,17 @@ ipcMain.on('update:install',  () => installUpdate())
 // ─── Старт ─────────────────────────────────────────────────────────────────
 app.whenReady().then(async () => {
   startPython()
-  await waitForBackend()
-  await createWindow()
+  // Окно и бэкенд параллельно — быстрый старт
+  createWindow()
+  waitForBackend()
 })
 
 app.on('window-all-closed', () => {
-  if (pythonProcess) pythonProcess.kill()
+  killPython()
   globalShortcut.unregisterAll()
   if (process.platform !== 'darwin') app.quit()
 })
 
 app.on('before-quit', () => {
-  if (pythonProcess) pythonProcess.kill()
+  killPython()
 })

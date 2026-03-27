@@ -86,6 +86,22 @@ export const TRANSLATIONS = {
     developer: 'Разработчик',
     description: 'Описание',
     app_description: 'Быстрый и удобный загрузчик видео и аудио с YouTube, TikTok и других платформ.',
+    // Playlist
+    playlist_detected: 'Обнаружен плейлист',
+    playlist_loading: 'Загружаем треки...',
+    playlist_tracks: 'треков',
+    playlist_selected: 'выбрано',
+    playlist_select_all: 'Выбрать все',
+    playlist_deselect_all: 'Снять все',
+    // Proxy
+    proxy: 'Прокси',
+    proxy_enable: 'Включить прокси',
+    proxy_type: 'Тип прокси',
+    proxy_host: 'Хост',
+    proxy_port: 'Порт',
+    proxy_login: 'Логин',
+    proxy_password: 'Пароль',
+    proxy_hint: 'Используется для обхода блокировок',
   },
   uk: {
     paste_placeholder: 'Вставте посилання на відео... (або Ctrl+V)',
@@ -164,6 +180,22 @@ export const TRANSLATIONS = {
     developer: 'Розробник',
     description: 'Опис',
     app_description: 'Швидкий та зручний завантажувач відео та аудіо з YouTube, TikTok та інших платформ.',
+    // Playlist
+    playlist_detected: 'Виявлено плейлист',
+    playlist_loading: 'Завантажуємо треки...',
+    playlist_tracks: 'треків',
+    playlist_selected: 'вибрано',
+    playlist_select_all: 'Вибрати все',
+    playlist_deselect_all: 'Зняти все',
+    // Proxy
+    proxy: 'Проксі',
+    proxy_enable: 'Увімкнути проксі',
+    proxy_type: 'Тип проксі',
+    proxy_host: 'Хост',
+    proxy_port: 'Порт',
+    proxy_login: 'Логін',
+    proxy_password: 'Пароль',
+    proxy_hint: 'Використовується для обходу блокувань',
   },
   en: {
     paste_placeholder: 'Paste video link... (or Ctrl+V)',
@@ -242,6 +274,22 @@ export const TRANSLATIONS = {
     developer: 'Developer',
     description: 'Description',
     app_description: 'Fast and convenient video & audio downloader from YouTube, TikTok and other platforms.',
+    // Playlist
+    playlist_detected: 'Playlist detected',
+    playlist_loading: 'Loading tracks...',
+    playlist_tracks: 'tracks',
+    playlist_selected: 'selected',
+    playlist_select_all: 'Select all',
+    playlist_deselect_all: 'Deselect all',
+    // Proxy
+    proxy: 'Proxy',
+    proxy_enable: 'Enable proxy',
+    proxy_type: 'Proxy type',
+    proxy_host: 'Host',
+    proxy_port: 'Port',
+    proxy_login: 'Login',
+    proxy_password: 'Password',
+    proxy_hint: 'Used to bypass regional restrictions',
   },
 }
 
@@ -253,6 +301,12 @@ export interface AppPreferences {
   lang: Lang
   theme: 'light' | 'dark' | 'system'
   defaultSpeedLimit: string
+  proxyEnabled: boolean
+  proxyType: 'http' | 'https' | 'socks5'
+  proxyHost: string
+  proxyPort: string
+  proxyLogin: string
+  proxyPassword: string
 }
 
 const DEFAULT_PREFS: AppPreferences = {
@@ -260,6 +314,12 @@ const DEFAULT_PREFS: AppPreferences = {
   lang: 'ru',
   theme: 'system',
   defaultSpeedLimit: 'Без лимита',
+  proxyEnabled: false,
+  proxyType: 'https',
+  proxyHost: '',
+  proxyPort: '',
+  proxyLogin: '',
+  proxyPassword: '',
 }
 
 export function loadPrefs(): AppPreferences {

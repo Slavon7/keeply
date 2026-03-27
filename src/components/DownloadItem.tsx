@@ -85,7 +85,8 @@ export function DownloadItem({ item, onDelete, onStop, onPause, isSelectionMode 
         <div className="mt-0.5 flex items-center gap-2 text-xs text-gray-400 dark:text-gray-500">
           {item.fileSize   && <span>{item.fileSize}</span>}
           {item.format     && <><span>•</span><span>{item.format.toUpperCase()}</span></>}
-          {item.resolution && <><span>•</span><span>{item.resolution}{item.fps ? ` · ${item.fps}fps` : ''}</span></>}
+          {item.resolution && <><span>•</span><span>{item.resolution}</span></>}
+          {item.fps && <><span>•</span><span>{item.fps}fps</span></>}
           {item.downloaded_at && !isDownloading && <><span>•</span><span>{item.downloaded_at}</span></>}
         </div>
 

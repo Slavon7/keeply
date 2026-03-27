@@ -223,20 +223,19 @@ export default function App() {
     setSelectedIds(prev =>
       prev.size === filtered.length
         ? new Set()
-        : new Set(filtered.map(i => i.id))
+        : new Set(filtered.map(i => i.id).filter((id): id is string => id != null))
     )
   }, [filtered])
 
   const handleDeleteSelected = useCallback(() => {
     const count = selectedIds.size
-    const titles = items.filter(i => selectedIds.has(i.id)).map(i => i.title)
     setDeleteTarget({ id: '__bulk__', title: `${count}`, filepath: JSON.stringify(
-      items.filter(i => selectedIds.has(i.id)).map(i => i.filepath)
+      items.filter(i => i.id != null && selectedIds.has(i.id!)).map(i => i.filepath ?? '')
     )})
   }, [selectedIds, items])
 
   const handleOpenFolderSelected = useCallback(() => {
-    const item = items.find(i => selectedIds.has(i.id))
+    const item = items.find(i => i.id != null && selectedIds.has(i.id))
     if (item?.filepath) {
       fetch('http://127.0.0.1:7842/open-folder', {
         method: 'POST',
@@ -290,6 +289,17 @@ export default function App() {
     activeDownloads.current.set(tempId, { ws, paused: false })
   }, [T])
 
+  const handleDownloadUrls = useCallback((urls: string[], baseSettings: DownloadSettings) => {
+    // Добавляем все треки напрямую в очередь с задержкой для уникального tempId
+    urls.forEach((trackUrl, index) => {
+      const startOne = () => {
+        handleDownload({ ...baseSettings, url: trackUrl, playlist: false })
+      }
+      // Небольшая задержка чтобы tempId был уникальным
+      setTimeout(startOne, index * 100)
+    })
+  }, [handleDownload])
+
   const handleStop = useCallback((id: string) => {
     const active = activeDownloads.current.get(id)
     if (active) {
@@ -314,7 +324,7 @@ export default function App() {
   const handleDeleteRequest = useCallback((id: string) => {
     const item = items.find(i => i.id === id)
     if (!item) return
-    setDeleteTarget({ id, title: item.title, filepath: item.filepath })
+    setDeleteTarget({ id, title: item.title, filepath: item.filepath ?? '' })
   }, [items])
 
   const handleDeleteConfirm = useCallback(async () => {
@@ -322,7 +332,7 @@ export default function App() {
     if (deleteTarget.id === '__bulk__') {
       const filepaths: string[] = JSON.parse(deleteTarget.filepath)
       await Promise.all(filepaths.map(fp => deleteFile(fp)))
-      setItems(prev => prev.filter(i => !selectedIds.has(i.id)))
+      setItems(prev => prev.filter(i => !selectedIds.has(i.id ?? '')))
       setSelectedIds(new Set())
       setIsSelectionMode(false)
     } else {
@@ -342,7 +352,7 @@ export default function App() {
     <div className="flex h-screen flex-col bg-gray-50 select-none dark:bg-gray-950">
       <TitleBar />
       <div className="h-px bg-gray-200 dark:bg-gray-800 flex-shrink-0" />
-      <UpdateBanner />
+      <UpdateBanner t={T} />
       <Toolbar onDownload={handleDownload} isDownloading={isAnyDownloading} t={T} />
       <SearchBar
         query={query} onQuery={setQuery}
@@ -378,7 +388,7 @@ export default function App() {
             <DownloadItem key={item.id} item={item}
               onDelete={handleDeleteRequest} onStop={handleStop} onPause={handlePause}
               isSelectionMode={isSelectionMode}
-              isSelected={selectedIds.has(item.id)}
+              isSelected={selectedIds.has(item.id ?? '')}
               onToggleSelect={handleToggleSelect}
               t={T} />
           ))
