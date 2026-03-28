@@ -350,7 +350,7 @@ export default function App() {
 
   return (
     <div className="flex h-screen flex-col bg-gray-50 select-none dark:bg-gray-950">
-      <TitleBar />
+      <TitleBar t={T} />
       <div className="h-px bg-gray-200 dark:bg-gray-800 flex-shrink-0" />
       <UpdateBanner t={T} />
       <Toolbar onDownload={handleDownload} isDownloading={isAnyDownloading} t={T} />

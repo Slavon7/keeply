@@ -282,7 +282,9 @@ async def ws_download(ws: WebSocket):
 
         # Флаг отмены — передаём в downloader
         cancelled = [False]
+        paused    = [False]
         settings["cancelled"] = cancelled
+        settings["paused"]    = paused
 
         downloader.download(
             req.url,
@@ -300,10 +302,12 @@ async def ws_download(ws: WebSocket):
                 cancelled[0] = True
                 break
             elif msg.get("type") == "pause":
+                paused[0] = True
                 asyncio.run_coroutine_threadsafe(
                     ws.send_json({"type": "paused"}), loop
                 )
             elif msg.get("type") == "resume":
+                paused[0] = False
                 asyncio.run_coroutine_threadsafe(
                     ws.send_json({"type": "resumed"}), loop
                 )

@@ -14,9 +14,9 @@ type Tab = 'general' | 'language' | 'downloads' | 'proxy' | 'about'
 const SPEED_OPTIONS = ['Без лимита', '128 KB/s', '512 KB/s', '1 MB/s', '2 MB/s', '5 MB/s', '10 MB/s']
 
 const LANGUAGES: { code: Lang; label: string; badge: string }[] = [
-  { code: 'ru', label: 'Русский',     badge: 'RU' },
   { code: 'uk', label: 'Українська',  badge: 'UA' },
   { code: 'en', label: 'English',     badge: 'EN' },
+  { code: 'ru', label: 'Русский',     badge: 'RU' },
 ]
 
 export function PreferencesModal({ prefs, t, onSave, onClose }: Props) {

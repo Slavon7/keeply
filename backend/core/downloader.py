@@ -27,7 +27,6 @@ QUALITY_MAP = {
 
 AUDIO_FORMATS = {"mp3", "m4a", "opus", "wav"}
 
-
 class Downloader:
     def download(self, url: str, settings: dict = None,
                  on_progress=None, on_complete=None, on_error=None):
@@ -39,19 +38,36 @@ class Downloader:
         thread.start()
 
     def _worker(self, url, settings, on_progress, on_complete, on_error):
+        import time
         try:
-            # Определяем fmt и is_audio здесь чтобы использовать после скачивания
             fmt      = settings.get("format", "mp4")
             is_audio = fmt in AUDIO_FORMATS
 
             opts = self._build_opts(settings, on_progress)
 
             with yt_dlp.YoutubeDL(opts) as ydl:
-                info = ydl.extract_info(url, download=True)
+                # Retry для Pinterest и других нестабильных CDN
+                info      = None
+                last_err  = None
+                for attempt in range(3):
+                    try:
+                        info = ydl.extract_info(url, download=True)
+                        break
+                    except Exception as e:
+                        last_err = e
+                        err_str = str(e)
+                        if attempt < 2 and (
+                            "No video formats found" in err_str or
+                            "Requested format is not available" in err_str
+                        ):
+                            time.sleep(2)
+                            continue
+                        raise
+                if info is None:
+                    raise last_err
                 if "entries" in info:
                     info = info["entries"][0]
 
-                # prepare_filename даёт имя до ffmpeg — ищем реальный файл
                 raw_filename = ydl.prepare_filename(info)
                 final_path   = Path(raw_filename).with_suffix(f".{fmt}")
                 if not final_path.exists():
@@ -110,7 +126,6 @@ class Downloader:
         except Exception as e:
             err_msg = str(e)
             if "cancelled by user" in err_msg.lower():
-                # Тихая отмена — не показываем ошибку пользователю
                 return
             print(f"[Downloader ERROR] {e}")
             traceback.print_exc()
@@ -132,6 +147,8 @@ class Downloader:
             "outtmpl":        str(Path(dl_dir) / "%(title)s.%(ext)s"),
             "progress_hooks": [self._make_hook(on_progress, s.get("on_processing"), s.get("cancelled"), s.get("paused"))],
             "noplaylist":     not s.get("playlist", False),
+            "retries":        3,
+            "fragment_retries": 3,
         }
 
         if is_audio:
@@ -141,7 +158,9 @@ class Downloader:
                 "preferredcodec": fmt,
             }]
         else:
-            opts["format"] = QUALITY_MAP.get(quality, "bv*+ba[ext=m4a]/b")
+            # Для Pinterest и других HLS источников — добавляем fallback
+            base_fmt = QUALITY_MAP.get(quality, "bv*+ba[ext=m4a]/b")
+            opts["format"] = f"{base_fmt}/bestvideo+bestaudio/best"
             opts["merge_output_format"] = fmt
             if need_aac:
                 opts["postprocessor_args"] = {
