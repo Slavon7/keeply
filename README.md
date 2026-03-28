@@ -30,7 +30,8 @@
 
 ## 📸 Screenshots
 
-> Coming soon
+<img width="1100" height="750" alt="image" src="https://github.com/user-attachments/assets/763c773f-3535-462f-923e-db2737489f39" />
+
 
 ---
 
