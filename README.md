@@ -1,71 +1,144 @@
-# YT Downloader — Electron + React + FastAPI
+<div align="center">
+  <h1>⬇️ Keeply</h1>
+  <p>Fast and beautiful video & audio downloader for YouTube, TikTok, Pinterest and 1000+ more sites</p>
 
-## Структура проекта
+  ![Electron](https://img.shields.io/badge/Electron-31-47848F?logo=electron)
+  ![React](https://img.shields.io/badge/React-18-61DAFB?logo=react)
+  ![FastAPI](https://img.shields.io/badge/FastAPI-0.11-009688?logo=fastapi)
+  ![yt-dlp](https://img.shields.io/badge/yt--dlp-latest-FF0000)
+  ![License](https://img.shields.io/badge/license-MIT-green)
+</div>
 
-```
-yt_electron/
-├── backend/
-│   ├── server.py          # FastAPI сервер
-│   ├── requirements.txt
-│   ├── core/
-│   │   ├── downloader.py  # yt-dlp логика
-│   │   └── history.py     # JSON история
-│   └── utils/
-│       └── file_utils.py  # открыть файл/папку
-├── electron/
-│   ├── main.js            # Electron главный процесс
-│   └── preload.js
-├── src/
-│   ├── App.tsx
-│   ├── api.ts             # HTTP/WebSocket клиент
-│   ├── main.tsx
-│   ├── styles/index.css
-│   └── components/
-│       ├── Toolbar.tsx
-│       ├── SearchBar.tsx
-│       ├── FilterTabs.tsx
-│       └── DownloadItem.tsx
-├── package.json
-├── vite.config.ts
-├── tailwind.config.js
-└── index.html
-```
+---
 
-## Установка и запуск
+## ✨ Features
 
-### 1. Python бэкенд
+- 🎬 Download video & audio from YouTube, TikTok, Pinterest, SoundCloud and 1000+ sites
+- 🎵 Extract audio in MP3, M4A, OPUS, WAV
+- 📋 Playlist support with track selection — pick only the songs you want
+- ⚡ Concurrent downloads queue — set your own limit (1, 2, 3, 5, 10)
+- ⏸ Pause & resume downloads
+- 🔍 SponsorBlock integration — skip ads automatically
+- 🌐 Proxy support (HTTP, HTTPS, SOCKS5)
+- 🍪 Browser cookies support for age-restricted content
+- 🌙 Dark / Light / System theme
+- 🌍 Multilingual: English, Українська, Русский
+- 📁 Download history with search, filter and sort
+- 🔄 Auto-updater via GitHub Releases
+
+---
+
+## 📸 Screenshots
+
+> Coming soon
+
+---
+
+## 🚀 Getting Started
+
+### Requirements
+
+- [Node.js](https://nodejs.org/) 18+
+- [Python](https://www.python.org/) 3.10+
+- [ffmpeg](https://ffmpeg.org/) (for audio extraction and subtitles)
+
+### Installation
+
 ```bash
+# 1. Clone the repository
+git clone https://github.com/Slavon7/keeply.git
+cd keeply
+
+# 2. Install Node dependencies
+npm install
+
+# 3. Install Python dependencies
 cd backend
 pip install -r requirements.txt
+cd ..
 ```
 
-### 2. Node зависимости
-```bash
-npm install
-```
+### Development
 
-### 3. Запуск в dev режиме
 ```bash
-# Терминал 1 — Python сервер
-cd backend && python server.py
-
-# Терминал 2 — Electron + Vite
+# Start everything with one command
 npm run start
+# Electron will automatically launch the Python backend
 ```
 
-### Или всё сразу одной командой:
+### Production Build
+
 ```bash
-npm run start
-# (Electron сам запустит Python через spawn)
+npm run dist
 ```
 
-## Продакшн сборка
-```bash
-npm run build
-npm run electron
+The installer will be in the `dist/` folder.
+
+---
+
+## 🏗 Project Structure
+
+```
+keeply/
+├── backend/
+│   ├── server.py           # FastAPI server + WebSocket
+│   ├── requirements.txt
+│   ├── core/
+│   │   ├── downloader.py   # yt-dlp wrapper with pause/queue support
+│   │   └── history.py      # JSON download history
+│   └── utils/
+│       └── file_utils.py   # Open file / folder helpers
+├── electron/
+│   ├── main.js             # Electron main process
+│   ├── preload.js          # Context bridge
+│   └── updater.js          # Auto-updater (electron-updater)
+├── src/
+│   ├── App.tsx             # Main React component + download queue
+│   ├── api.ts              # HTTP / WebSocket client
+│   ├── i18n.ts             # Translations + preferences
+│   └── components/
+│       ├── Toolbar.tsx         # URL input + settings
+│       ├── DownloadItem.tsx    # Download row with progress
+│       ├── PlaylistModal.tsx   # Playlist track selector
+│       ├── PreferencesModal.tsx
+│       ├── SearchBar.tsx
+│       ├── FilterTabs.tsx
+│       ├── TitleBar.tsx
+│       ├── UpdateBanner.tsx
+│       └── BulkActionsBar.tsx
+├── package.json
+├── vite.config.ts
+└── tailwind.config.js
 ```
 
-## Требования
-- Python 3.10+
-- Node.js 18+
-- ffmpeg (для конвертации аудио и субтитров)
+---
+
+## 🛠 Tech Stack
+
+| Layer | Technology |
+|-------|-----------|
+| Desktop shell | Electron 31 |
+| Frontend | React 18 + TypeScript + Tailwind CSS |
+| Build tool | Vite |
+| Backend | FastAPI + Uvicorn |
+| Download engine | yt-dlp |
+| Media processing | ffmpeg |
+| Auto-updates | electron-updater + GitHub Releases |
+
+---
+
+## 📦 Releases
+
+Download the latest installer from the [Releases](https://github.com/Slavon7/keeply/releases) page.
+
+---
+
+## 🤝 Contributing
+
+Pull requests are welcome. For major changes, please open an issue first.
+
+---
+
+## 📄 License
+
+MIT © [Viacheslav Omeniuk](https://github.com/Slavon7)
