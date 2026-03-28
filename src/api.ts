@@ -128,6 +128,7 @@ export function startDownload(
   onComplete: (item: DownloadItem) => void,
   onError: (msg: string) => void,
   onProcessing?: () => void,
+  onMeta?: (title: string, thumbnail?: string) => void,
 ): WebSocket {
   const ws = new WebSocket(`${WS}/ws/download`)
   ws.onopen = () => ws.send(JSON.stringify(settings))
@@ -137,6 +138,8 @@ export function startDownload(
       onProgress(msg.percent, msg.speed, msg.downloaded_bytes, msg.total_bytes)
     else if (msg.type === 'processing')
       onProcessing?.()
+    else if (msg.type === 'meta')
+      onMeta?.(msg.title, msg.thumbnail)
     else if (msg.type === 'complete')
       onComplete({ ...msg.item, status: 'downloaded' })
     else if (msg.type === 'error')

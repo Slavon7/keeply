@@ -12,6 +12,8 @@ const FRONTEND_URL = isDev
   ? 'http://localhost:5173'
   : `file://${path.join(__dirname, '../dist/index.html')}`
 
+ipcMain.handle('app:version', () => app.getVersion())
+
 // ─── Отправка событий в React ──────────────────────────────────────────────
 function send(channel, ...args) {
   if (mainWindow) mainWindow.webContents.send(channel, ...args)

@@ -158,8 +158,10 @@ export default function App() {
     const handler = (e: KeyboardEvent) => {
       if ((e.ctrlKey || e.metaKey) && e.key === 'v') {
         const active = document.activeElement
-        const isInput = active instanceof HTMLInputElement || active instanceof HTMLTextAreaElement
-        if (!isInput) {
+        // Не перехватываем только если фокус в поле поиска или прокси инпутах
+        const isTypingField = active instanceof HTMLInputElement || active instanceof HTMLTextAreaElement
+        // Но перехватываем если это URL инпут в Toolbar (он очистится и заполнится через paste-url)
+        if (!isTypingField) {
           e.preventDefault()
           navigator.clipboard.readText().then(text => {
             const trimmed = text.trim()
@@ -283,6 +285,12 @@ export default function App() {
         setItems(prev => prev.map(i =>
           i.id === tempId ? { ...i, progress: 100, speed: 0, processing: true,
             title: i.title === T.connecting ? T.loading : i.title } : i
+        ))
+      },
+      // onMeta — получаем название и превью сразу при старте
+      (title: string, thumbnail?: string) => {
+        setItems(prev => prev.map(i =>
+          i.id === tempId ? { ...i, title, thumbnail: thumbnail ?? i.thumbnail } : i
         ))
       }
     )

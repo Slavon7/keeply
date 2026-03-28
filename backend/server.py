@@ -247,6 +247,21 @@ async def ws_download(ws: WebSocket):
 
         await ws.send_json({"type": "started"})
 
+        # Получаем метаданные заранее — чтобы показать название сразу
+        try:
+            import yt_dlp as _ydl
+            with _ydl.YoutubeDL({"quiet": True, "no_warnings": True, "skip_download": True}) as ydl:
+                meta = ydl.extract_info(req.url, download=False)
+                if meta:
+                    if "entries" in meta:
+                        meta = meta["entries"][0]
+                    title = meta.get("title") or meta.get("webpage_url_basename")
+                    thumbnail = meta.get("thumbnail")
+                    if title:
+                        await ws.send_json({"type": "meta", "title": title, "thumbnail": thumbnail})
+        except Exception:
+            pass  # если не получилось — просто продолжаем без названия
+
         def on_progress(percent, speed, downloaded_bytes, total_bytes):
             asyncio.run_coroutine_threadsafe(
                 ws.send_json({
@@ -282,9 +297,7 @@ async def ws_download(ws: WebSocket):
 
         # Флаг отмены — передаём в downloader
         cancelled = [False]
-        paused    = [False]
         settings["cancelled"] = cancelled
-        settings["paused"]    = paused
 
         downloader.download(
             req.url,
@@ -302,12 +315,10 @@ async def ws_download(ws: WebSocket):
                 cancelled[0] = True
                 break
             elif msg.get("type") == "pause":
-                paused[0] = True
                 asyncio.run_coroutine_threadsafe(
                     ws.send_json({"type": "paused"}), loop
                 )
             elif msg.get("type") == "resume":
-                paused[0] = False
                 asyncio.run_coroutine_threadsafe(
                     ws.send_json({"type": "resumed"}), loop
                 )
