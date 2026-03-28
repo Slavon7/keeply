@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { X, Globe, Download, Info, Palette, Shield } from 'lucide-react'
 import { AppPreferences, Lang, T } from '../i18n'
 
@@ -20,17 +20,28 @@ const LANGUAGES: { code: Lang; label: string; badge: string }[] = [
 ]
 
 export function PreferencesModal({ prefs, t, onSave, onClose }: Props) {
-  const [activeTab, setActiveTab]   = useState<Tab>('general')
-  const [draft, setDraft]           = useState<AppPreferences>({ ...prefs })
+  const [activeTab, setActiveTab] = useState<Tab>('general')
+  const [draft, setDraft]         = useState<AppPreferences>({ ...prefs })
+  const [appVersion, setAppVersion] = useState('')
+
+  useEffect(() => {
+    const api = (window as any).electronAPI
+    if (api?.getAppVersion) {
+      api.getAppVersion().then((v: string) => setAppVersion(v))
+    } else {
+      // Fallback для dev или если API недоступен
+      setAppVersion('dev')
+    }
+  }, [])
 
   const handleSave = () => { onSave(draft); onClose() }
 
   const tabs: { key: Tab; icon: typeof Globe; label: string }[] = [
-    { key: 'general',   icon: Palette,  label: t.general   },
-    { key: 'language',  icon: Globe,    label: t.language   },
-    { key: 'downloads', icon: Download, label: t.downloads  },
-    { key: 'proxy',     icon: Shield,   label: t.proxy      },
-    { key: 'about',     icon: Info,     label: t.about      },
+    { key: 'general',   icon: Palette,  label: t.general  },
+    { key: 'language',  icon: Globe,    label: t.language  },
+    { key: 'downloads', icon: Download, label: t.downloads },
+    { key: 'proxy',     icon: Shield,   label: t.proxy     },
+    { key: 'about',     icon: Info,     label: t.about     },
   ]
 
   return (
@@ -291,7 +302,7 @@ export function PreferencesModal({ prefs, t, onSave, onClose }: Props) {
                   </div>
                   <div>
                     <h3 className="text-lg font-bold text-gray-900 dark:text-gray-100">Keeply</h3>
-                    <p className="text-sm text-gray-400 dark:text-gray-500">{t.version} 1.0.5</p>
+                    <p className="text-sm text-gray-400 dark:text-gray-500">{t.version} {appVersion}</p>
                   </div>
                 </div>
                 <p className="text-sm leading-relaxed text-gray-600 dark:text-gray-400">{t.app_description}</p>
@@ -302,7 +313,7 @@ export function PreferencesModal({ prefs, t, onSave, onClose }: Props) {
                   </div>
                   <div className="flex justify-between">
                     <span className="text-gray-500 dark:text-gray-400">{t.version}</span>
-                    <span className="font-medium text-gray-800 dark:text-gray-200">1.0.5</span>
+                    <span className="font-medium text-gray-800 dark:text-gray-200">{appVersion}</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-gray-500 dark:text-gray-400">Stack</span>

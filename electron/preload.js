@@ -5,9 +5,10 @@ contextBridge.exposeInMainWorld('BACKEND', {
   wsUrl: 'ws://127.0.0.1:7842',
 })
 
+
 contextBridge.exposeInMainWorld('electronAPI', {
   browseFolder: () => ipcRenderer.invoke('browse-folder'),
-
+  getAppVersion: () => ipcRenderer.invoke('app:version'),
   minimize: () => ipcRenderer.send('window:minimize'),
   maximize: () => ipcRenderer.send('window:maximize'),
   close: () => ipcRenderer.send('window:close'),
