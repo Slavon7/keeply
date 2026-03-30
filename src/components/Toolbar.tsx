@@ -3,6 +3,7 @@ import { Download, Settings, ChevronDown, Check, Loader2 } from 'lucide-react'
 import { DownloadSettings, fetchPlaylistInfo, PlaylistTrack } from '../api'
 import { FolderPicker } from './FolderPicker'
 import { PlaylistModal } from './PlaylistModal'
+import { BrowserInterceptModal } from './BrowserInterceptModal'
 import { T } from '../i18n'
 
 interface ToolbarProps {
@@ -98,6 +99,24 @@ export function Toolbar({ onDownload, isDownloading, t }: ToolbarProps) {
   const [playlistUrl, setPlaylistUrl]       = useState('')
   const [showPlaylist, setShowPlaylist]     = useState(false)
   const [loadingPlaylist, setLoadingPlaylist] = useState(false)
+  const [showBrowserModal, setShowBrowserModal] = useState(false)
+  const [browserUrl, setBrowserUrl] = useState('')
+
+  const SUPPORTED_DOMAINS = [
+    'youtube.com', 'youtu.be', 'music.youtube.com',
+    'tiktok.com', 'instagram.com', 'twitter.com', 'x.com',
+    'facebook.com', 'fb.watch', 'vk.com', 'ok.ru',
+    'rutube.ru', 'twitch.tv', 'vimeo.com', 'dailymotion.com',
+    'reddit.com', 'rumble.com', 'odysee.com', 'bilibili.com',
+    'soundcloud.com', 'pinterest.com', 'pinterest.ru', 'coub.com',
+  ]
+
+  const isSupportedByYtDlp = (url: string) => {
+    try {
+      const domain = new URL(url).hostname.replace('www.', '')
+      return SUPPORTED_DOMAINS.some(d => domain === d || domain.endsWith('.' + d))
+    } catch { return false }
+  }
 
   useEffect(() => {
     const p = PLATFORM_SETTINGS[platform]
@@ -151,6 +170,13 @@ export function Toolbar({ onDownload, isDownloading, t }: ToolbarProps) {
         }
       } catch (_) {}
       setLoadingPlaylist(false)
+    }
+
+    // Если сайт не поддерживается yt-dlp — открываем браузер-перехватчик
+    if (!isSupportedByYtDlp(trimmed)) {
+      setBrowserUrl(trimmed)
+      setShowBrowserModal(true)
+      return
     }
 
     onDownload(buildSettings(trimmed))
@@ -236,6 +262,18 @@ export function Toolbar({ onDownload, isDownloading, t }: ToolbarProps) {
           </div>
         )}
       </div>
+
+      {showBrowserModal && (
+        <BrowserInterceptModal
+          url={browserUrl}
+          onDownload={(videoUrl) => {
+            setShowBrowserModal(false)
+            onDownload(buildSettings(videoUrl))
+            setUrl('')
+          }}
+          onCancel={() => setShowBrowserModal(false)}
+        />
+      )}
 
       {showPlaylist && (
         <PlaylistModal

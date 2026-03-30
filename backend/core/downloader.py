@@ -1,6 +1,7 @@
 import yt_dlp
 import threading
 import traceback
+import time as _time
 from pathlib import Path
 
 SPEED_MAP = {
@@ -27,6 +28,22 @@ QUALITY_MAP = {
 
 AUDIO_FORMATS = {"mp3", "m4a", "opus", "wav"}
 
+
+def unique_path(path: Path) -> Path:
+    """Возвращает уникальный путь добавляя (1), (2) и тд если файл существует."""
+    if not path.exists():
+        return path
+    stem   = path.stem
+    suffix = path.suffix
+    parent = path.parent
+    i = 1
+    while True:
+        candidate = parent / f"{stem} ({i}){suffix}"
+        if not candidate.exists():
+            return candidate
+        i += 1
+
+
 class Downloader:
     def download(self, url: str, settings: dict = None,
                  on_progress=None, on_complete=None, on_error=None):
@@ -46,16 +63,15 @@ class Downloader:
             opts = self._build_opts(settings, on_progress)
 
             with yt_dlp.YoutubeDL(opts) as ydl:
-                # Retry для Pinterest и других нестабильных CDN
-                info      = None
-                last_err  = None
+                info     = None
+                last_err = None
                 for attempt in range(3):
                     try:
                         info = ydl.extract_info(url, download=True)
                         break
                     except Exception as e:
                         last_err = e
-                        err_str = str(e)
+                        err_str  = str(e)
                         if attempt < 2 and (
                             "No video formats found" in err_str or
                             "Requested format is not available" in err_str
@@ -68,22 +84,41 @@ class Downloader:
                 if "entries" in info:
                     info = info["entries"][0]
 
+                # ─── Находим реальный путь файла ──────────────────────────────
                 raw_filename = ydl.prepare_filename(info)
-                final_path   = Path(raw_filename).with_suffix(f".{fmt}")
-                if not final_path.exists():
-                    final_path = Path(raw_filename)
+                base_path = Path(raw_filename)
+
+                # 1. Определяем реальный скачанный файл
+                if base_path.exists():
+                    final_path = base_path
+                else:
+                    dl_dir = Path(settings.get("download_dir", str(Path.home() / "Downloads")))
+                    matches = sorted(
+                        dl_dir.glob(f"{base_path.stem}*"),
+                        key=lambda p: p.stat().st_mtime,
+                        reverse=True,
+                    )
+                    final_path = matches[0] if matches else base_path
+
+                # 2. 🔥 ДЕЛАЕМ УНИКАЛЬНОЕ ИМЯ (video → video (1))
+                unique = unique_path(final_path)
+
+                if unique != final_path and final_path.exists():
+                    final_path.rename(unique)
+                    final_path = unique
+
                 filename = str(final_path)
 
                 if on_complete:
-                    # ─── Длительность ────────────────────────────────────────
-                    duration_str = None
+                    # ─── Длительность ─────────────────────────────────────────
+                    duration_str  = None
                     duration_secs = info.get("duration")
                     if duration_secs:
                         mins, secs = divmod(int(duration_secs), 60)
                         hrs,  mins = divmod(mins, 60)
                         duration_str = f"{hrs}:{mins:02d}:{secs:02d}" if hrs else f"{mins}:{secs:02d}"
 
-                    # ─── Размер файла ─────────────────────────────────────────
+                    # ─── Размер файла ──────────────────────────────────────────
                     file_size = None
                     try:
                         size_bytes = final_path.stat().st_size
@@ -141,14 +176,19 @@ class Downloader:
         is_audio = fmt in AUDIO_FORMATS
         need_aac = platform in ("windows", "macos", "ios", "android")
 
+        # каждый файл будет уникальным (ID видео) дубли всегда будут качаться
+        base_template = Path(dl_dir) / "%(title)s.%(ext)s"
+
         opts = {
-            "quiet":          True,
-            "no_warnings":    True,
-            "outtmpl":        str(Path(dl_dir) / "%(title)s.%(ext)s"),
-            "progress_hooks": [self._make_hook(on_progress, s.get("on_processing"), s.get("cancelled"), s.get("paused"))],
-            "noplaylist":     not s.get("playlist", False),
-            "retries":        3,
+            "quiet":            True,
+            "no_warnings":      True,
+            "outtmpl":          str(base_template),
+            "progress_hooks":   [self._make_hook(on_progress, s.get("on_processing"), s.get("cancelled"), s.get("paused"))],
+            "noplaylist":       not s.get("playlist", False),
+            "retries":          3,
             "fragment_retries": 3,
+            # Не перезаписываем — yt-dlp добавит .1.ext, .2.ext и тд
+            "overwrites":       False,
         }
 
         if is_audio:
@@ -158,7 +198,6 @@ class Downloader:
                 "preferredcodec": fmt,
             }]
         else:
-            # Для Pinterest и других HLS источников — добавляем fallback
             base_fmt = QUALITY_MAP.get(quality, "bv*+ba[ext=m4a]/b")
             opts["format"] = f"{base_fmt}/bestvideo+bestaudio/best"
             opts["merge_output_format"] = fmt
@@ -194,17 +233,13 @@ class Downloader:
         import time
         last_total = [0]
         def hook(d):
-            # Если отмена — бросаем исключение чтобы остановить yt-dlp
             if cancelled and cancelled[0]:
                 raise Exception("Download cancelled by user")
-
-            # Пауза — блокируем поток пока не снимут паузу
             if paused:
                 while paused[0]:
                     if cancelled and cancelled[0]:
                         raise Exception("Download cancelled by user")
                     time.sleep(0.2)
-
             if d["status"] == "downloading" and on_progress:
                 total      = d.get("total_bytes") or d.get("total_bytes_estimate", 0)
                 downloaded = d.get("downloaded_bytes", 0)

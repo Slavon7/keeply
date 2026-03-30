@@ -22,17 +22,7 @@ const LANGUAGES: { code: Lang; label: string; badge: string }[] = [
 export function PreferencesModal({ prefs, t, onSave, onClose }: Props) {
   const [activeTab, setActiveTab] = useState<Tab>('general')
   const [draft, setDraft]         = useState<AppPreferences>({ ...prefs })
-  const [appVersion, setAppVersion] = useState('')
-
-  useEffect(() => {
-    const api = (window as any).electronAPI
-    if (api?.getAppVersion) {
-      api.getAppVersion().then((v: string) => setAppVersion(v))
-    } else {
-      // Fallback для dev или если API недоступен
-      setAppVersion('dev')
-    }
-  }, [])
+  const appVersion = (window as any).__APP_VERSION__ ?? ''
 
   const handleSave = () => { onSave(draft); onClose() }
 

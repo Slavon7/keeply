@@ -5,14 +5,26 @@ contextBridge.exposeInMainWorld('BACKEND', {
   wsUrl: 'ws://127.0.0.1:7842',
 })
 
-
 contextBridge.exposeInMainWorld('electronAPI', {
-  browseFolder: () => ipcRenderer.invoke('browse-folder'),
-  getAppVersion: () => ipcRenderer.invoke('app:version'),
-  minimize: () => ipcRenderer.send('window:minimize'),
-  maximize: () => ipcRenderer.send('window:maximize'),
-  close: () => ipcRenderer.send('window:close'),
-  isMaximized: () => ipcRenderer.invoke('window:is-maximized'),
+  browseFolder:    () => ipcRenderer.invoke('browse-folder'),
+  getAppVersion:   () => ipcRenderer.invoke('app:version'),
+  minimize:        () => ipcRenderer.send('window:minimize'),
+  maximize:        () => ipcRenderer.send('window:maximize'),
+  close:           () => ipcRenderer.send('window:close'),
+  isMaximized:     () => ipcRenderer.invoke('window:is-maximized'),
+
+  // Drag & Drop
+  startDrag: (filepath) => ipcRenderer.send('drag:start', filepath),
+
+  // Выбор файла
+  pickFile: () => ipcRenderer.invoke('pick-file'),
+
+  // Браузер-перехватчик
+  openExternal: (url) => ipcRenderer.invoke('open-external', url),
+  browserIntercept: (url) => ipcRenderer.invoke('browser:intercept', url),
+  browserClose:     () => ipcRenderer.send('browser:close'),
+  onBrowserFound:   (callback) => ipcRenderer.on('browser:found', (_e, url) => callback(url)),
+  offBrowserFound:  () => ipcRenderer.removeAllListeners('browser:found'),
 
   onMenu: (channel, callback) => {
     const valid = [
@@ -32,8 +44,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
 
   // Обновления
   checkUpdates:   () => ipcRenderer.send('update:check'),
-  downloadUpdate: () => ipcRenderer.send('update:download'), // ← запустить скачивание
-  installUpdate:  () => ipcRenderer.send('update:install'),  // ← перезапустить
+  downloadUpdate: () => ipcRenderer.send('update:download'),
+  installUpdate:  () => ipcRenderer.send('update:install'),
 
   onUpdate: (channel, callback) => {
     const channels = [

@@ -100,6 +100,29 @@ def get_default_folders():
     return folders
 
 
+class HistoryEntryRequest(BaseModel):
+    id: str
+
+@app.delete("/history/entry")
+def delete_history_entry(req: HistoryEntryRequest):
+    """Удалить запись из истории без удаления файла с диска."""
+    import json
+    from core.history import HISTORY_FILE
+    history = load_history()
+    # id формат: hist-N
+    try:
+        idx = int(req.id.replace("hist-", ""))
+        if 0 <= idx < len(history):
+            history.pop(idx)
+            clean = [{k: v for k, v in h.items() if k != "file_missing"} for h in history]
+            with open(HISTORY_FILE, "w", encoding="utf-8") as f:
+                json.dump(clean, f, ensure_ascii=False, indent=2)
+            return {"ok": True}
+    except Exception as e:
+        return {"ok": False, "error": str(e)}
+    return {"ok": False}
+
+
 @app.delete("/file")
 def api_delete_file(req: OpenRequest):
     """Удаляет файл с диска и запись из истории."""
@@ -246,21 +269,6 @@ async def ws_download(ws: WebSocket):
             settings["speed_limit"] = req.speed_limit
 
         await ws.send_json({"type": "started"})
-
-        # Получаем метаданные заранее — чтобы показать название сразу
-        try:
-            import yt_dlp as _ydl
-            with _ydl.YoutubeDL({"quiet": True, "no_warnings": True, "skip_download": True}) as ydl:
-                meta = ydl.extract_info(req.url, download=False)
-                if meta:
-                    if "entries" in meta:
-                        meta = meta["entries"][0]
-                    title = meta.get("title") or meta.get("webpage_url_basename")
-                    thumbnail = meta.get("thumbnail")
-                    if title:
-                        await ws.send_json({"type": "meta", "title": title, "thumbnail": thumbnail})
-        except Exception:
-            pass  # если не получилось — просто продолжаем без названия
 
         def on_progress(percent, speed, downloaded_bytes, total_bytes):
             asyncio.run_coroutine_threadsafe(

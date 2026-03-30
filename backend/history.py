@@ -11,7 +11,12 @@ def load_history() -> list:
         return []
     try:
         with open(HISTORY_FILE, "r", encoding="utf-8") as f:
-            return json.load(f)
+            history = json.load(f)
+        # Помечаем файлы которых нет на диске
+        for h in history:
+            filepath = h.get("filepath", "")
+            h["file_missing"] = bool(filepath) and not Path(filepath).exists()
+        return history
     except Exception:
         return []
 
@@ -19,13 +24,25 @@ def load_history() -> list:
 def save_entry(entry: dict):
     history = load_history()
     entry["downloaded_at"] = time.strftime("%Y-%m-%d %H:%M")
+    entry.pop("file_missing", None)  # не сохраняем этот флаг в файл
     history.insert(0, entry)
-    # Держим максимум 100 записей
     history = history[:100]
-    with open(HISTORY_FILE, "w", encoding="utf-8") as f:
-        json.dump(history, f, ensure_ascii=False, indent=2)
+    _save(history)
+
+
+def remove_entry(filepath: str):
+    """Удалить запись из истории по пути файла."""
+    history = load_history()
+    history = [h for h in history if h.get("filepath") != filepath]
+    _save(history)
 
 
 def clear_history():
     if HISTORY_FILE.exists():
         HISTORY_FILE.unlink()
+
+
+def _save(history: list):
+    clean = [{k: v for k, v in h.items() if k != "file_missing"} for h in history]
+    with open(HISTORY_FILE, "w", encoding="utf-8") as f:
+        json.dump(clean, f, ensure_ascii=False, indent=2)

@@ -141,6 +141,7 @@ async function createWindow() {
   // Показываем окно как только React отрендерился
   mainWindow.once('ready-to-show', () => {
     mainWindow.show()
+    if (isDev) mainWindow.webContents.openDevTools()
   })
 
   // Запускаем auto-updater только в prod
@@ -160,10 +161,76 @@ ipcMain.handle('browse-folder', async () => {
   return result.canceled ? null : result.filePaths[0]
 })
 
+ipcMain.on('drag:start', (event, filepath) => {
+  event.sender.startDrag({
+    file: filepath,
+    icon: path.join(__dirname, '../assets/drag_icon.png')
+  })
+})
+
 // IPC — обновления
+ipcMain.handle('open-external', (event, url) => shell.openExternal(url))
 ipcMain.on('update:check',    () => checkForUpdates())
 ipcMain.on('update:download', () => downloadUpdate())
 ipcMain.on('update:install',  () => installUpdate())
+
+ipcMain.handle('pick-file', async () => {
+  const result = await dialog.showOpenDialog(mainWindow, {
+    properties: ['openFile'],
+    filters: [
+      { name: 'Video/Audio', extensions: ['mp4', 'mkv', 'webm', 'mp3', 'm4a', 'opus', 'wav'] },
+      { name: 'All Files', extensions: ['*'] },
+    ],
+  })
+  return result.canceled ? null : result.filePaths[0]
+})
+
+// ─── Браузер-перехватчик ───────────────────────────────────────────────────
+let interceptWindow = null
+
+ipcMain.handle('browser:intercept', async (event, url) => {
+  if (interceptWindow) {
+    interceptWindow.close()
+    interceptWindow = null
+  }
+
+  interceptWindow = new BrowserWindow({
+    width: 1000,
+    height: 700,
+    title: 'Keeply — нажмите Play для скачивания',
+    icon: path.join(__dirname, '../assets/icon.ico'),
+    webPreferences: {
+      nodeIntegration: false,
+      contextIsolation: true,
+      webSecurity: false,
+    },
+  })
+
+  const VIDEO_REGEX = /\.(m3u8|mp4|mkv|webm|ts)(\?|$|&)/i
+  const found = new Set()
+
+  interceptWindow.webContents.session.webRequest.onBeforeRequest(
+    { urls: ['*://*/*'] },
+    (details, callback) => {
+      if (VIDEO_REGEX.test(details.url) && !found.has(details.url)) {
+        found.add(details.url)
+        mainWindow?.webContents.send('browser:found', details.url)
+      }
+      callback({})
+    }
+  )
+
+  interceptWindow.on('closed', () => { interceptWindow = null })
+  interceptWindow.loadURL(url)
+  return { ok: true }
+})
+
+ipcMain.on('browser:close', () => {
+  if (interceptWindow) {
+    interceptWindow.close()
+    interceptWindow = null
+  }
+})
 
 // ─── Старт ─────────────────────────────────────────────────────────────────
 app.whenReady().then(async () => {

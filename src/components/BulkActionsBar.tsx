@@ -1,4 +1,4 @@
-import { Trash2, Folder, X, CheckSquare, Square } from 'lucide-react'
+import { Trash2, Folder, X, CheckSquare, Square, History } from 'lucide-react'
 import { T } from '../i18n'
 
 interface Props {
@@ -7,13 +7,14 @@ interface Props {
   onSelectAll: () => void
   onClearSelection: () => void
   onDeleteSelected: () => void
+  onDeleteFromHistorySelected: () => void
   onOpenFolder: () => void
   t: T
 }
 
 export function BulkActionsBar({
   selectedCount, totalCount,
-  onSelectAll, onClearSelection, onDeleteSelected, onOpenFolder, t
+  onSelectAll, onClearSelection, onDeleteSelected, onDeleteFromHistorySelected, onOpenFolder, t
 }: Props) {
   const allSelected = selectedCount === totalCount && totalCount > 0
 
@@ -59,6 +60,13 @@ export function BulkActionsBar({
             >
               <Folder className="h-4 w-4" />
               {t.open_folder}
+            </button>
+            <button
+              onClick={onDeleteFromHistorySelected}
+              className="flex items-center gap-2 rounded-lg border border-red-400 bg-white px-3 py-1.5 text-sm text-red-500 transition-all hover:bg-red-50 active:scale-95 dark:bg-transparent dark:border-red-700 dark:text-red-400 dark:hover:bg-red-900/20"
+            >
+              <History className="h-4 w-4" />
+              {t.delete_from_history} ({selectedCount})
             </button>
             <button
               onClick={onDeleteSelected}

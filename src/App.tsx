@@ -158,10 +158,8 @@ export default function App() {
     const handler = (e: KeyboardEvent) => {
       if ((e.ctrlKey || e.metaKey) && e.key === 'v') {
         const active = document.activeElement
-        // Не перехватываем только если фокус в поле поиска или прокси инпутах
-        const isTypingField = active instanceof HTMLInputElement || active instanceof HTMLTextAreaElement
-        // Но перехватываем если это URL инпут в Toolbar (он очистится и заполнится через paste-url)
-        if (!isTypingField) {
+        const isInput = active instanceof HTMLInputElement || active instanceof HTMLTextAreaElement
+        if (!isInput) {
           e.preventDefault()
           navigator.clipboard.readText().then(text => {
             const trimmed = text.trim()
@@ -247,6 +245,25 @@ export default function App() {
     }
   }, [selectedIds, items])
 
+  const handleLocate = useCallback(async (id: string) => {
+    const api = (window as any).electronAPI
+    if (!api?.pickFile) return
+    const newPath = await api.pickFile()
+    if (!newPath) return
+    await fetch('http://127.0.0.1:7842/update-filepath', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id, newPath }),
+    })
+    fetchHistory().then(setItems)
+  }, [])
+
+  const handleDeleteFromHistory = useCallback((id: string) => {
+    const item = items.find(i => i.id === id)
+    if (!item) return
+    setDeleteTarget({ id: '__single_history__', title: item.title, filepath: id })
+  }, [items])
+
   const handleDownload = useCallback((settings: DownloadSettings) => {
     // Проверяем лимит одновременных загрузок
     const activeCount = items.filter(i => i.status === 'downloading').length
@@ -286,16 +303,19 @@ export default function App() {
           i.id === tempId ? { ...i, progress: 100, speed: 0, processing: true,
             title: i.title === T.connecting ? T.loading : i.title } : i
         ))
-      },
-      // onMeta — получаем название и превью сразу при старте
-      (title: string, thumbnail?: string) => {
-        setItems(prev => prev.map(i =>
-          i.id === tempId ? { ...i, title, thumbnail: thumbnail ?? i.thumbnail } : i
-        ))
       }
     )
     activeDownloads.current.set(tempId, { ws, paused: false })
   }, [T])
+
+  const handleDeleteFromHistorySelected = useCallback(() => {
+    const count = selectedIds.size
+    setDeleteTarget({
+      id: '__bulk_history__',
+      title: `${count}`,
+      filepath: JSON.stringify([...selectedIds]),
+    })
+  }, [selectedIds])
 
   const handleDownloadUrls = useCallback((urls: string[], baseSettings: DownloadSettings) => {
     // Добавляем все треки напрямую в очередь с задержкой для уникального tempId
@@ -343,6 +363,26 @@ export default function App() {
       setItems(prev => prev.filter(i => !selectedIds.has(i.id ?? '')))
       setSelectedIds(new Set())
       setIsSelectionMode(false)
+    } else if (deleteTarget.id === '__bulk_history__') {
+      const ids: string[] = JSON.parse(deleteTarget.filepath)
+      await Promise.all(ids.map(id =>
+        fetch('http://127.0.0.1:7842/history/entry', {
+          method: 'DELETE',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ id }),
+        })
+      ))
+      setItems(prev => prev.filter(i => !ids.includes(i.id ?? '')))
+      setSelectedIds(new Set())
+      setIsSelectionMode(false)
+    } else if (deleteTarget.id === '__single_history__') {
+      const id = deleteTarget.filepath
+      await fetch('http://127.0.0.1:7842/history/entry', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id }),
+      })
+      setItems(prev => prev.filter(i => i.id !== id))
     } else {
       await deleteFile(deleteTarget.filepath)
       setItems(prev => prev.filter(i => i.id !== deleteTarget.id))
@@ -381,6 +421,7 @@ export default function App() {
           onSelectAll={handleSelectAll}
           onClearSelection={() => setSelectedIds(new Set())}
           onDeleteSelected={handleDeleteSelected}
+          onDeleteFromHistorySelected={handleDeleteFromHistorySelected}
           onOpenFolder={handleOpenFolderSelected}
           t={T}
         />
@@ -395,6 +436,7 @@ export default function App() {
           filtered.map(item => (
             <DownloadItem key={item.id} item={item}
               onDelete={handleDeleteRequest} onStop={handleStop} onPause={handlePause}
+              onLocate={handleLocate} onDeleteFromHistory={handleDeleteFromHistory}
               isSelectionMode={isSelectionMode}
               isSelected={selectedIds.has(item.id ?? '')}
               onToggleSelect={handleToggleSelect}
@@ -406,7 +448,8 @@ export default function App() {
       {deleteTarget && (
         <DeleteConfirmModal
           title={deleteTarget.title}
-          isBulk={deleteTarget.id === '__bulk__'}
+          isBulk={deleteTarget.id === '__bulk__' || deleteTarget.id === '__bulk_history__'}
+          isHistoryOnly={deleteTarget.id === '__bulk_history__' || deleteTarget.id === '__single_history__'}
           t={T}
           onConfirm={handleDeleteConfirm}
           onCancel={() => setDeleteTarget(null)} />
