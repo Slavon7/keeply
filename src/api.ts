@@ -38,6 +38,7 @@ export interface DownloadSettings {
   playlist?: boolean
   thumbnail?: boolean
   sponsorblock?: boolean
+  page_title?: string  // для browser-intercept: slug из URL страницы
 }
 
 export async function fetchHistory(): Promise<DownloadItem[]> {

@@ -2,6 +2,8 @@ import { useState, useEffect } from 'react'
 import { X, Globe, Download, Info, Palette, Shield } from 'lucide-react'
 import { AppPreferences, Lang, T } from '../i18n'
 
+declare const __APP_VERSION__: string
+
 interface Props {
   prefs: AppPreferences
   t: T
@@ -22,7 +24,7 @@ const LANGUAGES: { code: Lang; label: string; badge: string }[] = [
 export function PreferencesModal({ prefs, t, onSave, onClose }: Props) {
   const [activeTab, setActiveTab] = useState<Tab>('general')
   const [draft, setDraft]         = useState<AppPreferences>({ ...prefs })
-  const appVersion = (window as any).__APP_VERSION__ ?? ''
+  const appVersion = __APP_VERSION__ ?? ''
 
   const handleSave = () => { onSave(draft); onClose() }
 

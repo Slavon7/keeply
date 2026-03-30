@@ -176,8 +176,13 @@ class Downloader:
         is_audio = fmt in AUDIO_FORMATS
         need_aac = platform in ("windows", "macos", "ios", "android")
 
-        # каждый файл будет уникальным (ID видео) дубли всегда будут качаться
-        base_template = Path(dl_dir) / "%(title)s.%(ext)s"
+        # Если пришёл page_title (browser-intercept) — используем его как имя файла
+        # чтобы разные видео с одного CDN не перезаписывали друг друга
+        page_title = (s.get("page_title") or "").strip()
+        if page_title:
+            base_template = Path(dl_dir) / f"{page_title}.%(ext)s"
+        else:
+            base_template = Path(dl_dir) / "%(title)s.%(ext)s"
 
         opts = {
             "quiet":            True,

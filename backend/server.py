@@ -52,6 +52,7 @@ class DownloadRequest(BaseModel):
     playlist: bool = False
     thumbnail: bool = False
     sponsorblock: bool = False
+    page_title: Optional[str] = None
 
 class OpenRequest(BaseModel):
     filepath: str
@@ -303,9 +304,11 @@ async def ws_download(ws: WebSocket):
                 loop,
             )
 
-        # Флаг отмены — передаём в downloader
+        # Флаги управления — передаём в downloader
         cancelled = [False]
+        paused    = [False]
         settings["cancelled"] = cancelled
+        settings["paused"]    = paused
 
         downloader.download(
             req.url,
@@ -319,14 +322,15 @@ async def ws_download(ws: WebSocket):
         while True:
             msg = await ws.receive_json()
             if msg.get("type") == "cancel":
-                # Реальная отмена — ставим флаг, yt-dlp остановится
                 cancelled[0] = True
                 break
             elif msg.get("type") == "pause":
+                paused[0] = True
                 asyncio.run_coroutine_threadsafe(
                     ws.send_json({"type": "paused"}), loop
                 )
             elif msg.get("type") == "resume":
+                paused[0] = False
                 asyncio.run_coroutine_threadsafe(
                     ws.send_json({"type": "resumed"}), loop
                 )

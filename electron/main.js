@@ -6,6 +6,20 @@ const { setupAutoUpdater, checkForUpdates, downloadUpdate, installUpdate } = req
 let mainWindow
 let pythonProcess
 
+// ─── Один экземпляр приложения ────────────────────────────────────────────
+const gotLock = app.requestSingleInstanceLock()
+if (!gotLock) {
+  app.quit()
+} else {
+  app.on('second-instance', () => {
+    // Второй запуск — фокусируем уже открытое окно
+    if (mainWindow) {
+      if (mainWindow.isMinimized()) mainWindow.restore()
+      mainWindow.focus()
+    }
+  })
+}
+
 const isDev = !app.isPackaged
 const BACKEND_URL = 'http://127.0.0.1:7842'
 const FRONTEND_URL = isDev
@@ -190,7 +204,7 @@ let interceptWindow = null
 
 ipcMain.handle('browser:intercept', async (event, url) => {
   if (interceptWindow) {
-    interceptWindow.close()
+    interceptWindow.destroy()
     interceptWindow = null
   }
 
@@ -206,17 +220,60 @@ ipcMain.handle('browser:intercept', async (event, url) => {
     },
   })
 
-  const VIDEO_REGEX = /\.(m3u8|mp4|mkv|webm|ts)(\?|$|&)/i
+  interceptWindow.webContents.setAudioMuted(true)
+
+  const VIDEO_REGEX = /\.(m3u8|mp4|mkv|webm)(\?|$|&)/i
+
+  // Рекламные домены
+  const AD_DOMAINS = [
+    'googlesyndication.com', 'doubleclick.net', 'googletagmanager.com',
+    'google-analytics.com', 'facebook.com/tr', 'moatads.com',
+    'adnxs.com', 'rubiconproject.com', 'pubmatic.com', 'openx.net',
+    'casalemedia.com', 'smartadserver.com', 'adsafeprotected.com',
+    'scorecardresearch.com', 'imrworldwide.com', 'quantserve.com',
+    'adform.net', 'serving-sys.com', 'cdn.ampproject.org',
+    'servetraff.com', 'trafficjunky.net', 'exoclick.com',
+    'ero-advertising.com', 'juicyads.com', 'trafficstars.com',
+  ]
+
+  // Паттерны в пути URL, которые выдают рекламный контент
+  const AD_PATH_PATTERNS = [
+    /\/banner[_s/]/i, /\/banners\//i, /\/ads?\//i, /\/advert/i,
+    /\/promo[_/]/i, /\/commercial/i, /\/sponsor/i,
+    /\bwelcome[_-]/i, /\/story[_-]stories/i, /\/bk_stories/i,
+  ]
+
   const found = new Set()
 
   interceptWindow.webContents.session.webRequest.onBeforeRequest(
     { urls: ['*://*/*'] },
     (details, callback) => {
-      if (VIDEO_REGEX.test(details.url) && !found.has(details.url)) {
-        found.add(details.url)
-        mainWindow?.webContents.send('browser:found', details.url)
+      const u = details.url
+      if (!VIDEO_REGEX.test(u) || found.has(u)) { callback({}); return }
+
+      // Фильтр по домену
+      if (AD_DOMAINS.some(d => u.includes(d))) { callback({}); return }
+
+      // Фильтр по пути (баннеры, промо и т.д.)
+      try {
+        const pathname = new URL(u).pathname
+        if (AD_PATH_PATTERNS.some(r => r.test(pathname))) { callback({}); return }
+      } catch { /* ignore */ }
+
+      // Только реальные медиа-запросы браузера
+      const type = details.resourceType
+      if (type !== 'media' && type !== 'xhr' && type !== 'fetch' && type !== 'other') {
+        callback({}); return
       }
+
+      found.add(u)
+      mainWindow?.webContents.send('browser:found', u)
       callback({})
+      // Закрываем окно сразу после первой найденной ссылки
+      if (found.size === 1 && interceptWindow) {
+        interceptWindow.destroy()
+        interceptWindow = null
+      }
     }
   )
 
@@ -227,9 +284,18 @@ ipcMain.handle('browser:intercept', async (event, url) => {
 
 ipcMain.on('browser:close', () => {
   if (interceptWindow) {
-    interceptWindow.close()
+    interceptWindow.destroy()
     interceptWindow = null
   }
+})
+
+ipcMain.on('browser:volume', (_e, vol) => {
+  if (!interceptWindow) return
+  const v = Math.max(0, Math.min(1, vol))
+  interceptWindow.webContents.setAudioMuted(v === 0)
+  interceptWindow.webContents.executeJavaScript(
+    `document.querySelectorAll('video,audio').forEach(el => el.volume = ${v})`
+  ).catch(() => {})
 })
 
 // ─── Старт ─────────────────────────────────────────────────────────────────

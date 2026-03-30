@@ -265,10 +265,17 @@ export function Toolbar({ onDownload, isDownloading, t }: ToolbarProps) {
 
       {showBrowserModal && (
         <BrowserInterceptModal
+          t={t}
           url={browserUrl}
           onDownload={(videoUrl) => {
             setShowBrowserModal(false)
-            onDownload(buildSettings(videoUrl))
+            const settings = buildSettings(videoUrl)
+            // Берём slug из оригинальной страницы как имя файла (turbo, cap-zabuvajlo и т.д.)
+            try {
+              const segments = new URL(browserUrl).pathname.split('/').filter(Boolean)
+              if (segments.length > 0) settings.page_title = segments[segments.length - 1]
+            } catch {}
+            onDownload(settings)
             setUrl('')
           }}
           onCancel={() => setShowBrowserModal(false)}

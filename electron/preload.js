@@ -23,6 +23,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   openExternal: (url) => ipcRenderer.invoke('open-external', url),
   browserIntercept: (url) => ipcRenderer.invoke('browser:intercept', url),
   browserClose:     () => ipcRenderer.send('browser:close'),
+  browserVolume:    (vol) => ipcRenderer.send('browser:volume', vol),
   onBrowserFound:   (callback) => ipcRenderer.on('browser:found', (_e, url) => callback(url)),
   offBrowserFound:  () => ipcRenderer.removeAllListeners('browser:found'),
 

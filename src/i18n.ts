@@ -91,6 +91,15 @@ export const TRANSLATIONS = {
     developer: 'Разработчик',
     description: 'Описание',
     app_description: 'Быстрый и удобный загрузчик видео и аудио с YouTube, TikTok и других платформ.',
+    // Browser intercept modal
+    browser_title: 'Скачать видео',
+    browser_waiting_title: 'Откроется окно браузера',
+    browser_waiting_hint: 'Нажмите ▶ Play — ссылка появится автоматически',
+    browser_found: 'Видео найдено!',
+    browser_best_quality: 'лучшее качество',
+    browser_other: 'Другие варианты',
+    browser_hide: 'Скрыть',
+    browser_hint: 'Иногда ссылка находится автоматически. Если этого не произошло — найдите кнопку ▶ Play на сайте в открывшемся окне и нажмите её.',
     // Playlist
     playlist_detected: 'Обнаружен плейлист',
     playlist_loading: 'Загружаем треки...',
@@ -217,6 +226,15 @@ export const TRANSLATIONS = {
     developer: 'Розробник',
     description: 'Опис',
     app_description: 'Швидкий та зручний завантажувач відео та аудіо з YouTube, TikTok та інших платформ.',
+    // Browser intercept modal
+    browser_title: 'Завантажити відео',
+    browser_waiting_title: 'Відкриється вікно браузера',
+    browser_waiting_hint: 'Натисніть ▶ Play — посилання зʼявиться автоматично',
+    browser_found: 'Відео знайдено!',
+    browser_best_quality: 'найкраща якість',
+    browser_other: 'Інші варіанти',
+    browser_hide: 'Сховати',
+    browser_hint: 'Іноді посилання знаходиться автоматично. Якщо цього не сталось — знайдіть кнопку ▶ Play на сайті у відкритому вікні та натисніть її.',
     // Playlist
     playlist_detected: 'Виявлено плейлист',
     playlist_loading: 'Завантажуємо треки...',
@@ -343,6 +361,15 @@ export const TRANSLATIONS = {
     developer: 'Developer',
     description: 'Description',
     app_description: 'Fast and convenient video & audio downloader from YouTube, TikTok and other platforms.',
+    // Browser intercept modal
+    browser_title: 'Download video',
+    browser_waiting_title: 'Browser window will open',
+    browser_waiting_hint: 'Press ▶ Play — the link will appear automatically',
+    browser_found: 'Video found!',
+    browser_best_quality: 'best quality',
+    browser_other: 'Other options',
+    browser_hide: 'Hide',
+    browser_hint: 'Sometimes the link is found automatically. If not — find the ▶ Play button on the website in the opened window and click it.',
     // Playlist
     playlist_detected: 'Playlist detected',
     playlist_loading: 'Loading tracks...',
