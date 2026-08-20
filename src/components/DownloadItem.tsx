@@ -34,6 +34,7 @@ export function DownloadItem({ item, onDelete, onStop, onPause, onLocate, onDele
   const isPaused      = item.paused ?? false
   const isProcessing  = item.processing ?? false
   const [menuOpen, setMenuOpen] = useState(false)
+  const [thumbnailBroken, setThumbnailBroken] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
 
   const downloadedStr = formatBytes(item.downloaded_bytes ?? 0)
@@ -100,10 +101,10 @@ export function DownloadItem({ item, onDelete, onStop, onPause, onLocate, onDele
 
       {/* Thumbnail */}
       <div className="relative h-16 w-28 flex-shrink-0 overflow-hidden rounded-lg bg-gray-100 dark:bg-gray-800">
-        {item.thumbnail ? (
+        {item.thumbnail && !thumbnailBroken ? (
           <img src={item.thumbnail} alt={item.title}
             className="h-full w-full object-cover"
-            onError={e => { (e.target as HTMLImageElement).style.display = 'none' }} />
+            onError={() => setThumbnailBroken(true)} />
         ) : (
           <div className="flex h-full w-full items-center justify-center">
             <Music className="h-6 w-6 text-gray-400 dark:text-gray-600" />

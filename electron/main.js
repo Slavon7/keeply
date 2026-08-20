@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, dialog, Menu, shell, clipboard, globalShortcut } = require('electron')
+const { app, BrowserWindow, ipcMain, dialog, Menu, shell, clipboard, globalShortcut, session } = require('electron')
 const path = require('path')
 const { spawn, execSync } = require('child_process')
 const { setupAutoUpdater, checkForUpdates, downloadUpdate, installUpdate } = require('./updater')
@@ -61,6 +61,39 @@ function killPython() {
     }
   } catch (_) {}
   pythonProcess = null
+}
+
+// ─── Content-Security-Policy для собственного окна ────────────────────────
+// Применяем только к главному документу нашего приложения — интерцепт-окна
+// грузят реальные страницы TikTok/Instagram/Pinterest, им CSP не нужен и вреден.
+function setupCSP() {
+  // В dev Vite инжектит инлайновый script (React Refresh preamble) и
+  // использует eval для HMR — без unsafe-inline/unsafe-eval белый экран.
+  // В проде всё бандлится во внешние файлы, так что там держим строгую политику.
+  const csp = [
+    "default-src 'self'",
+    isDev ? "script-src 'self' 'unsafe-inline' 'unsafe-eval'" : "script-src 'self'",
+    "style-src 'self' 'unsafe-inline'",
+    "img-src 'self' data: blob: https:",
+    "font-src 'self' data:",
+    `connect-src 'self' ${BACKEND_URL} ws://127.0.0.1:7842${isDev ? ' ws://localhost:5173' : ''}`,
+    "media-src 'self' blob:",
+  ].join('; ')
+
+  const target = FRONTEND_URL.replace(/\/$/, '')
+
+  session.defaultSession.webRequest.onHeadersReceived((details, callback) => {
+    if (details.resourceType === 'mainFrame' && details.url.replace(/\/$/, '') === target) {
+      callback({
+        responseHeaders: {
+          ...details.responseHeaders,
+          'Content-Security-Policy': [csp],
+        },
+      })
+      return
+    }
+    callback({ responseHeaders: details.responseHeaders })
+  })
 }
 
 async function waitForBackend(retries = 30) {
@@ -300,6 +333,7 @@ ipcMain.on('browser:volume', (_e, vol) => {
 
 // ─── Старт ─────────────────────────────────────────────────────────────────
 app.whenReady().then(async () => {
+  setupCSP()
   startPython()
   // Окно и бэкенд параллельно — быстрый старт
   createWindow()
